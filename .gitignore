@@ -3,6 +3,7 @@
 *.exe
 *.test
 *.out
+ forgejo/main
 
 # IDE
 .idea/
@@ -14,5 +15,6 @@
 .DS_Store
 Thumbs.db
 
+<<<<<<< HEAD
 # Temporary
 tmp/
