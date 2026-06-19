@@ -3,19 +3,17 @@ package server
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log/slog"
 	"net/http"
-	"os"
+	"net/url"
 	"strings"
 	"time"
 
 	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
 	"forgejo.humbertof.dev/humberto/push-observer/internal/deploy"
-
-	"gopkg.in/yaml.v3"
 )
 
 // ─────────────────────────────── Types ──────────────────────────────────
@@ -229,6 +227,23 @@ func (ui *UIRenderer) validateCSRF(r *http.Request) bool {
 	return false
 }
 
+// validateCSRFWithToken validates CSRF using an already-extracted form token.
+// Used for DELETE requests where ParseForm ignores the body.
+func (ui *UIRenderer) validateCSRFWithToken(r *http.Request, formToken string) bool {
+	if formToken == "" {
+		return false
+	}
+	cookie, err := r.Cookie("csrf_token")
+	if err != nil || cookie.Value != formToken {
+		return false
+	}
+	key := "session"
+	if stored, ok := ui.csrf[key]; ok && stored == formToken {
+		return true
+	}
+	return false
+}
+
 // ─────────────────────── Dashboard (GET /) ──────────────────────────────
 
 // Dashboard renders the main hook list page.
@@ -330,17 +345,13 @@ func (ui *UIRenderer) EditHookForm(w http.ResponseWriter, r *http.Request) {
 
 // ─────────────────────── API: Create Hook ───────────────────────────────
 
-// CreateHook handles POST /api/hooks — creates a new hook and saves to config.
+// CreateHook handles POST /hooks — creates a new hook from form data and saves to config.
 func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
-	slog.Debug("CreateHook called", "content_type", r.Header.Get("Content-Type"), "method", r.Method)
 	if err := r.ParseForm(); err != nil {
-		slog.Error("CreateHook ParseForm failed", "error", err)
 		ui.redirectError(w, r, "/hooks/new", "failed to parse form")
 		return
 	}
-	slog.Debug("CreateHook form parsed", "csrf_token", r.FormValue("csrf_token"), "id", r.FormValue("id"))
 	if !ui.validateCSRF(r) {
-		slog.Error("CreateHook CSRF validation failed")
 		ui.redirectError(w, r, "/hooks/new", "invalid CSRF token")
 		return
 	}
@@ -382,9 +393,9 @@ func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
 		hook.ContentType = "json"
 	}
 
-	ui.cfg.Hooks = append(ui.cfg.Hooks, hook)
-	if err := ui.saveConfig(); err != nil {
-		ui.redirectError(w, r, "/hooks/new", "failed to save config: "+err.Error())
+	// Use config's AddHook which handles persistence with rollback.
+	if err := ui.cfg.AddHook(hook); err != nil {
+		ui.redirectError(w, r, "/hooks/new", "failed to save: "+err.Error())
 		return
 	}
 
@@ -394,7 +405,7 @@ func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
 
 // ─────────────────────── API: Update Hook ───────────────────────────────
 
-// UpdateHook handles PUT /api/hooks/{id} — updates an existing hook.
+// UpdateHook handles PUT /hooks/{id} — updates an existing hook from form data.
 func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
 	if err := r.ParseForm(); err != nil {
@@ -406,29 +417,32 @@ func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hook := ui.findHook(hookID)
-	if hook == nil {
+	existing := ui.findHook(hookID)
+	if existing == nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	hook.RepoURL = r.FormValue("repo_url")
-	hook.RepoDir = r.FormValue("repo_dir")
-	hook.Branch = r.FormValue("branch")
-	hook.GitSSHKey = r.FormValue("git_ssh_key")
-	hook.ContentType = r.FormValue("content_type")
-	hook.HMAC = config.HMACConfig{
+	// Build updated config from form data, preserving existing services.
+	updated := *existing
+	updated.RepoURL = r.FormValue("repo_url")
+	updated.RepoDir = r.FormValue("repo_dir")
+	updated.Branch = r.FormValue("branch")
+	updated.GitSSHKey = r.FormValue("git_ssh_key")
+	updated.ContentType = r.FormValue("content_type")
+	updated.HMAC = config.HMACConfig{
 		Type:   r.FormValue("hmac_type"),
 		Secret: r.FormValue("hmac_secret"),
 		Header: r.FormValue("hmac_header"),
 	}
 
-	if hook.Branch == "" {
-		hook.Branch = "main"
+	if updated.Branch == "" {
+		updated.Branch = "main"
 	}
 
-	if err := ui.saveConfig(); err != nil {
-		ui.redirectError(w, r, "/hooks/"+hookID+"/edit", "failed to save config: "+err.Error())
+	// Use config's UpdateHook which handles persistence with rollback.
+	if err := ui.cfg.UpdateHook(hookID, updated); err != nil {
+		ui.redirectError(w, r, "/hooks/"+hookID+"/edit", "failed to save: "+err.Error())
 		return
 	}
 
@@ -438,33 +452,30 @@ func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 
 // ─────────────────────── API: Delete Hook ───────────────────────────────
 
-// DeleteHook handles DELETE /api/hooks/{id} — removes a hook from config.
+// DeleteHook handles DELETE /hooks/{id} — removes a hook from config.
+// Note: Go's ParseForm only parses body for POST/PUT/PATCH, so we manually
+// parse the form body for DELETE requests to extract the CSRF token.
 func (ui *UIRenderer) DeleteHook(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "failed to parse form", http.StatusBadRequest)
-		return
-	}
-	if !ui.validateCSRF(r) {
-		http.Error(w, "invalid CSRF token", http.StatusForbidden)
+
+	// Manually parse form body (ParseForm ignores body for DELETE).
+	bodyBytes, _ := io.ReadAll(r.Body)
+	formValues, _ := url.ParseQuery(string(bodyBytes))
+	csrfToken := formValues.Get("csrf_token")
+
+	if !ui.validateCSRFWithToken(r, csrfToken) {
+		ui.redirectError(w, r, "/", "invalid CSRF token")
 		return
 	}
 
-	idx := -1
-	for i, h := range ui.cfg.Hooks {
-		if h.ID == hookID {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
+	if ui.findHook(hookID) == nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	ui.cfg.Hooks = append(ui.cfg.Hooks[:idx], ui.cfg.Hooks[idx+1:]...)
-	if err := ui.saveConfig(); err != nil {
-		http.Error(w, "failed to save config", http.StatusInternalServerError)
+	// Use config's RemoveHook which handles persistence with rollback.
+	if err := ui.cfg.RemoveHook(hookID); err != nil {
+		ui.redirectError(w, r, "/", "failed to delete hook")
 		return
 	}
 
@@ -474,7 +485,7 @@ func (ui *UIRenderer) DeleteHook(w http.ResponseWriter, r *http.Request) {
 
 // ─────────────────────── API: Scan Services ─────────────────────────────
 
-// ScanServices handles POST /api/hooks/{id}/scan — rescans repo_dir for new services.
+// ScanServices handles POST /hooks/{id}/scan — rescans repo_dir for new services.
 func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
 	hook := ui.findHook(hookID)
@@ -483,8 +494,8 @@ func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rescan the repo directory for docker-compose.yaml files.
-	scanned := scanServicesDir(hook.RepoDir)
+	// Use config's ScanServices for docker-compose.yaml discovery.
+	scanned := config.ScanServices(hook.RepoDir)
 
 	// Merge: keep existing services that still have compose files,
 	// add new ones, preserve restart triggers for existing.
@@ -503,7 +514,8 @@ func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 	}
 	hook.Services = merged
 
-	if err := ui.saveConfig(); err != nil {
+	if err := ui.cfg.Save(); err != nil {
+		slog.Error("failed to save config after scan", "hookID", hookID, "error", err)
 		http.Error(w, "failed to save config", http.StatusInternalServerError)
 		return
 	}
@@ -514,7 +526,7 @@ func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 
 // ─────────────────────── API: Trigger Deploy ────────────────────────────
 
-// TriggerDeploy handles POST /api/hooks/{id}/trigger — manually triggers deploy.
+// TriggerDeploy handles POST /hooks/{id}/trigger — manually triggers deploy.
 func (ui *UIRenderer) TriggerDeploy(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
 	if ui.findHook(hookID) == nil {
@@ -533,34 +545,6 @@ func (ui *UIRenderer) TriggerDeploy(w http.ResponseWriter, r *http.Request) {
 	ui.server.setLastResult(hookID, result)
 	slog.Info("manual deploy complete", "hookID", hookID, "status", statusText(result))
 	http.Redirect(w, r, "/hooks/"+hookID+"?success=Deploy+complete", http.StatusSeeOther)
-}
-
-// ─────────────────────── API: Hook Status ───────────────────────────────
-
-// HookStatus handles GET /api/hooks/{id}/status — returns JSON with last deploy result.
-func (ui *UIRenderer) HookStatus(w http.ResponseWriter, r *http.Request) {
-	hookID := r.PathValue("id")
-	if ui.findHook(hookID) == nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	result := ui.server.getLastResult(hookID)
-	w.Header().Set("Content-Type", "application/json")
-	if result == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"hook_id": hookID,
-			"status":  "never",
-		})
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"hook_id":  hookID,
-		"status":   statusText(result),
-		"duration": result.Duration.String(),
-		"services": len(result.Services),
-	})
 }
 
 // ─────────────────────── Helpers ────────────────────────────────────────
@@ -644,51 +628,4 @@ func serviceStatusClass(svc deploy.DeployServiceResult) string {
 // redirectError redirects with an error query parameter.
 func (ui *UIRenderer) redirectError(w http.ResponseWriter, r *http.Request, path, msg string) {
 	http.Redirect(w, r, path+"?error="+msg, http.StatusSeeOther)
-}
-
-// saveConfig writes the current config to disk.
-func (ui *UIRenderer) saveConfig() error {
-	data, err := yaml.Marshal(ui.cfg)
-	if err != nil {
-		return fmt.Errorf("marshaling config: %w", err)
-	}
-	header := []byte("# pushObserver configuration\n" +
-		"# Secrets use ${ENV_VAR} or ${ENV_VAR:default} syntax.\n\n")
-	content := append(header, data...)
-	if err := os.WriteFile("push-observer.yaml", content, 0o640); err != nil {
-		return fmt.Errorf("writing config: %w", err)
-	}
-	return nil
-}
-
-// scanServicesDir walks a directory and returns services for each subdir with docker-compose.yaml.
-func scanServicesDir(repoDir string) []config.ServiceConfig {
-	// Reuse the scan pattern from config package.
-	entries, err := os.ReadDir(repoDir)
-	if err != nil {
-		return nil
-	}
-	var services []config.ServiceConfig
-	// Check root dir.
-	if _, err := os.Stat(repoDir + "/docker-compose.yaml"); err == nil {
-		services = append(services, config.ServiceConfig{
-			Name:           "root",
-			Path:           ".",
-			RestartTrigger: "default",
-		})
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-			continue
-		}
-		composeFile := repoDir + "/" + entry.Name() + "/docker-compose.yaml"
-		if _, err := os.Stat(composeFile); err == nil {
-			services = append(services, config.ServiceConfig{
-				Name:           entry.Name(),
-				Path:           entry.Name(),
-				RestartTrigger: "default",
-			})
-		}
-	}
-	return services
 }

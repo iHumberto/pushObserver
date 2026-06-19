@@ -209,7 +209,7 @@
 
     {{/* ── New Hook Section ── */}}
     {{else if eq .Section "new-hook"}}
-      {{template "hook-form" dict "Title" "Create Hook" "CSRF" .CSRF "Hook" nil "Action" "/api/hooks" "Method" "POST"}}
+      {{template "hook-form" dict "Title" "Create Hook" "CSRF" .CSRF "Hook" nil "Action" "/hooks" "Method" "POST"}}
 
     {{/* ── Hook Detail Section ── */}}
     {{else if eq .Section "hook-detail"}}
@@ -217,7 +217,7 @@
 
     {{/* ── Edit Hook Section ── */}}
     {{else if eq .Section "edit-hook"}}
-      {{template "hook-form" dict "Title" (printf "Edit %s" .Hook.ID) "CSRF" .CSRF "Hook" .Hook "Action" (printf "/api/hooks/%s" .Hook.ID) "Method" "PUT"}}
+      {{template "hook-form" dict "Title" (printf "Edit %s" .Hook.ID) "CSRF" .CSRF "Hook" .Hook "Action" (printf "/hooks/%s" .Hook.ID) "Method" "PUT"}}
     {{end}}
   </main>
 </body>
@@ -412,24 +412,24 @@
   {{else}}
   <p style="color:var(--text-dim);text-align:center;padding:24px 0;">
     No services detected.
-    <a href="/api/hooks/{{.Hook.ID}}/scan" onclick="event.preventDefault();this.closest('p').querySelector('form').submit();">Scan repo for services →</a>
+    <a href="/hooks/{{.Hook.ID}}/scan" onclick="event.preventDefault();this.closest('p').querySelector('form').submit();">Scan repo for services →</a>
   </p>
-  <form method="POST" action="/api/hooks/{{.Hook.ID}}/scan" style="display:none;">
+  <form method="POST" action="/hooks/{{.Hook.ID}}/scan" style="display:none;">
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
   </form>
   {{end}}
 
   <div class="service-actions">
-    <form method="POST" action="/api/hooks/{{.Hook.ID}}/scan" style="display:inline;">
+    <form method="POST" action="/hooks/{{.Hook.ID}}/scan" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <button type="submit" class="btn btn-secondary btn-sm">🔍 Scan for new services</button>
     </form>
-    <form method="POST" action="/api/hooks/{{.Hook.ID}}/trigger" style="display:inline;">
+    <form method="POST" action="/hooks/{{.Hook.ID}}/trigger" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <button type="submit" class="btn btn-primary btn-sm">▶ Deploy Now</button>
     </form>
     <a href="/hooks/{{.Hook.ID}}/edit" class="btn btn-secondary btn-sm">✏ Edit Hook</a>
-    <form method="POST" action="/api/hooks/{{.Hook.ID}}" style="display:inline;" onsubmit="return confirm('Delete hook {{.Hook.ID}}? This cannot be undone.')">
+    <form method="POST" action="/hooks/{{.Hook.ID}}" style="display:inline;" onsubmit="return confirm('Delete hook {{.Hook.ID}}? This cannot be undone.')">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <input type="hidden" name="_method" value="DELETE">
       <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>

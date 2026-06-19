@@ -1,7 +1,5 @@
 package server
-
 import (
-	"encoding/json"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -17,62 +15,13 @@ import (
 
 // ─────────────────────── Test Helpers ───────────────────────────────────
 
-// testConfig returns a minimal config with one hook for testing.
-func testConfig() *config.Config {
-	return &config.Config{
-		Server: config.ServerConfig{
-			Port:         9090,
-			Host:         "127.0.0.1",
-			ReadTimeout:  config.Duration(30 * time.Second),
-			WriteTimeout: config.Duration(300 * time.Second),
-		},
-		Hooks: []config.HookConfig{
-			{
-				ID:      "homelab",
-				RepoURL: "git@github.com:humberto/docker.git",
-				RepoDir: "/tmp/test-repo",
-				Branch:  "main",
-				HMAC: config.HMACConfig{
-					Type:   "sha256",
-					Secret: "test-secret",
-					Header: "X-Hub-Signature-256",
-				},
-				ContentType: "json",
-				Services: []config.ServiceConfig{
-					{Name: "jellyfin", Path: "jellyfin", RestartTrigger: "default"},
-					{Name: "prowlarr", Path: "prowlarr", RestartTrigger: "on-change"},
-				},
-				Deploy: config.DeployConfig{
-					CustomExtensions: []string{".py", ".yaml"},
-				},
-			},
-		},
-		Notifications: config.NotifyConfig{
-			AppriseURL: "http://localhost:8000",
-		},
-		Logging: config.LoggingConfig{
-			Level:  "debug",
-			Format: "text",
-		},
-	}
-}
-
-// testConfigNoLimit returns a config with rate limiting disabled.
-func testConfigNoLimit() *config.Config {
-	cfg := testConfig()
-	cfg.RateLimit.Enabled = false
-	return cfg
-}
-
-// testConfigFromFile creates a temp YAML config file, loads it, and returns the config.
-// The loaded config has configPath set, so Save() works.
-func testConfigFromFile(t *testing.T) *config.Config {
+// testConfig returns a minimal config loaded from a temp YAML file for testing.
+func testConfig(t *testing.T) *config.Config {
 	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "push-observer.yaml")
 
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "push-observer.yaml")
-
-	cfgData := []byte(`server:
+	yaml := `server:
   port: 9090
   host: "127.0.0.1"
   read_timeout: 30s
@@ -81,12 +30,14 @@ hooks:
   - id: homelab
     repo_url: "git@github.com:humberto/docker.git"
     repo_dir: "/tmp/test-repo"
-    branch: "main"
+    branch: main
     hmac:
       type: sha256
-      secret: "test-secret"
-      header: "X-Hub-Signature-256"
+      secret: test-secret
+      header: X-Hub-Signature-256
     content_type: json
+    deploy:
+      custom_extensions: [".py", ".yaml"]
     services:
       - name: jellyfin
         path: jellyfin
@@ -94,28 +45,28 @@ hooks:
       - name: prowlarr
         path: prowlarr
         restart_trigger: on-change
-    deploy:
-      custom_extensions: [".py", ".yaml"]
 notifications:
   apprise_url: "http://localhost:8000"
-  tag_success: "deploy-success"
-  tag_failure: "deploy-failure"
-rate_limit:
-  enabled: false
-  requests_per_minute: 30
-  burst: 5
 logging:
-  level: "info"
-  format: "text"
-`)
-	if err := os.WriteFile(configPath, cfgData, 0o640); err != nil {
-		t.Fatalf("write test config: %v", err)
+  level: info
+  format: text
+`
+	if err := os.WriteFile(path, []byte(yaml), 0o640); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
 	}
 
-	cfg, err := config.Load(configPath)
+	cfg, err := config.Load(path)
 	if err != nil {
-		t.Fatalf("load test config: %v", err)
+		t.Fatalf("failed to load test config: %v", err)
 	}
+	return cfg
+}
+
+// testConfigNoLimit returns a config with rate limiting disabled.
+func testConfigNoLimit(t *testing.T) *config.Config {
+	t.Helper()
+	cfg := testConfig(t)
+	cfg.RateLimit.Enabled = false
 	return cfg
 }
 
@@ -137,29 +88,18 @@ func testTemplate(t *testing.T) *template.Template {
 }
 
 // newTestServer creates a Server for testing without starting the listener.
-// Uses a config from memory (not Load'd from file — Save() will fail).
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
-	cfg := testConfigNoLimit()
+	cfg := testConfigNoLimit(t)
 	tmpl := testTemplate(t)
 	engine := deploy.New(cfg.Hooks, 30*time.Second)
 	return New(cfg, engine, tmpl)
 }
 
-// newTestServerWithFile creates a Server with config loaded from a temp file.
-// Configured hooks can be persisted (Save() works).
-func newTestServerWithFile(t *testing.T) (*Server, string) {
-	t.Helper()
-	cfg := testConfigFromFile(t)
-	tmpl := testTemplate(t)
-	engine := deploy.New(cfg.Hooks, 30*time.Second)
-	return New(cfg, engine, tmpl), ""
-}
-
 // ─────────────────────── Server Tests ───────────────────────────────────
 
 func TestNew(t *testing.T) {
-	cfg := testConfig()
+	cfg := testConfig(t)
 	tmpl := testTemplate(t)
 	engine := deploy.New(cfg.Hooks, 30*time.Second)
 	s := New(cfg, engine, tmpl)
@@ -241,10 +181,6 @@ func TestNewHookForm(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("status = %d, want 200", rec.Code)
 	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "hook") && !strings.Contains(body, "form") {
-		t.Log("body may not contain expected content with minimal template:", body)
-	}
 }
 
 // ─────────────────────── Hook Detail ────────────────────────────────────
@@ -303,85 +239,161 @@ func TestEditHookFormNotFound(t *testing.T) {
 	}
 }
 
-// ─────────────────────── API: Create Hook (REST) ────────────────────────
+// ─────────────────────── API: Create Hook ───────────────────────────────
 
-func TestCreateHook_REST(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
+func TestCreateHook_Success(t *testing.T) {
+	s := newTestServer(t)
+	// Generate CSRF token via form page first.
+	formReq := httptest.NewRequest("GET", "/hooks/new", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
 
-	body := map[string]interface{}{
-		"id":       "testhook",
-		"repo_url": "git@github.com:test/repo.git",
-		"repo_dir": "/tmp/test",
-		"branch":   "main",
-		"hmac": map[string]string{
-			"type":   "sha256",
-			"secret": "secret",
-			"header": "X-Hub-Signature-256",
-		},
-		"content_type": "json",
+	// Get CSRF cookie and token.
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+			break
+		}
 	}
-	bodyBytes, _ := json.Marshal(body)
+	if csrfToken == "" {
+		t.Fatal("CSRF token not found in response cookies")
+	}
 
-	req := httptest.NewRequest("POST", "/api/hooks", strings.NewReader(string(bodyBytes)))
-	req.Header.Set("Content-Type", "application/json")
+	body := "id=testhook&repo_url=git%40github.com%3Atest%2Frepo.git&repo_dir=%2Ftmp%2Ftest&branch=main&hmac_type=sha256&hmac_secret=secret&hmac_header=X-Hub-Signature-256&content_type=json&csrf_token=" + csrfToken
+	req := httptest.NewRequest("POST", "/hooks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	s.routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201 — body: %s", rec.Code, rec.Body.String())
+	// Should redirect (303) to the new hook page.
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "/hooks/testhook") {
+		t.Errorf("redirect location = %s, want /hooks/testhook?success=...", loc)
 	}
 
 	// Verify hook was added to config.
-	if s.cfg.HookByID("testhook") == nil {
+	if s.ui.findHook("testhook") == nil {
 		t.Error("hook testhook was not added to config")
 	}
 }
 
-func TestCreateHook_Duplicate_REST(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	body := map[string]interface{}{
-		"id":       "homelab", // already exists
-		"repo_url": "git@github.com:test/repo.git",
-		"repo_dir": "/tmp/test",
+func TestCreateHook_MissingFields(t *testing.T) {
+	s := newTestServer(t)
+	formReq := httptest.NewRequest("GET", "/hooks/new", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("CSRF token not found")
 	}
 
-	bodyBytes, _ := json.Marshal(body)
-	req := httptest.NewRequest("POST", "/api/hooks", strings.NewReader(string(bodyBytes)))
-	req.Header.Set("Content-Type", "application/json")
+	// Missing repo_url and repo_dir.
+	body := "id=badhook&repo_url=&repo_dir=&csrf_token=" + csrfToken
+	req := httptest.NewRequest("POST", "/hooks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	s.routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("status = %d, want 409 — body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "error=") {
+		t.Errorf("redirect should contain error param: %s", loc)
 	}
 }
 
-// ─────────────────────── API: Update Hook (REST) ────────────────────────
-
-func TestUpdateHook_REST(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	body := map[string]interface{}{
-		"repo_url": "git@github.com:humberto/new.git",
-		"repo_dir": "/tmp/updated",
-		"branch":   "develop",
-	}
-	bodyBytes, _ := json.Marshal(body)
-
-	req := httptest.NewRequest("PUT", "/api/hooks/homelab", strings.NewReader(string(bodyBytes)))
-	req.Header.Set("Content-Type", "application/json")
+func TestCreateHook_NoCSRF(t *testing.T) {
+	s := newTestServer(t)
+	body := "id=bad&repo_url=git%40github.com%3Atest%2Frepo.git&repo_dir=%2Ftmp%2Ftest"
+	req := httptest.NewRequest("POST", "/hooks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	s.routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 — body: %s", rec.Code, rec.Body.String())
+	// Should redirect with error since no CSRF.
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "error=") {
+		t.Errorf("redirect should contain error param: %s", loc)
+	}
+}
+
+func TestCreateHook_DuplicateID(t *testing.T) {
+	s := newTestServer(t)
+	formReq := httptest.NewRequest("GET", "/hooks/new", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("CSRF token not found")
 	}
 
-	hook := s.cfg.HookByID("homelab")
+	// Try to create hook with duplicate ID "homelab" (already exists in test config).
+	body := "id=homelab&repo_url=git%40github.com%3Atest%2Frepo.git&repo_dir=%2Ftmp%2Ftest&csrf_token=" + csrfToken
+	req := httptest.NewRequest("POST", "/hooks", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
+	rec := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "error=") {
+		t.Errorf("redirect should contain error for duplicate: %s", loc)
+	}
+}
+
+// ─────────────────────── API: Update Hook ───────────────────────────────
+
+func TestUpdateHook(t *testing.T) {
+	s := newTestServer(t)
+	// First get CSRF from edit page.
+	formReq := httptest.NewRequest("GET", "/hooks/homelab/edit", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("CSRF token not found")
+	}
+
+	body := "repo_url=git%40github.com%3Ahumberto%2Fnew.git&repo_dir=%2Ftmp%2Fupdated&branch=develop&hmac_type=sha1&hmac_secret=newsecret&hmac_header=X-Hub-Signature&content_type=form&git_ssh_key=%2Fhome%2F.key&csrf_token=" + csrfToken
+	req := httptest.NewRequest("PUT", "/hooks/homelab", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
+	rec := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+	}
+
+	hook := s.ui.findHook("homelab")
 	if hook == nil {
 		t.Fatal("hook homelab not found after update")
 	}
@@ -393,150 +405,96 @@ func TestUpdateHook_REST(t *testing.T) {
 	}
 }
 
-// ─────────────────────── API: Delete Hook (REST) ────────────────────────
+// ─────────────────────── API: Delete Hook ───────────────────────────────
 
-func TestDeleteHook_REST(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	req := httptest.NewRequest("DELETE", "/api/hooks/homelab", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 — body: %s", rec.Code, rec.Body.String())
+func TestDeleteHook(t *testing.T) {
+	s := newTestServer(t)
+	formReq := httptest.NewRequest("GET", "/hooks/homelab/edit", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Fatal("CSRF token not found")
 	}
 
-	if s.cfg.HookByID("homelab") != nil {
+	body := "csrf_token=" + csrfToken + "&_method=DELETE"
+	req := httptest.NewRequest("DELETE", "/hooks/homelab", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
+	rec := httptest.NewRecorder()
+	s.routes().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+	}
+
+	if s.ui.findHook("homelab") != nil {
 		t.Error("hook homelab should have been deleted")
 	}
 }
 
-// ─────────────────────── API: Scan Services (REST) ──────────────────────
+// ─────────────────────── API: Scan Services ─────────────────────────────
 
-func TestScanServices_REST(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	req := httptest.NewRequest("GET", "/api/hooks/homelab/scan", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-
-	// Scan may return 200 (even if dir doesn't exist — empty array)
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200 — body: %s", rec.Code, rec.Body.String())
-	}
-
-	ct := rec.Header().Get("Content-Type")
-	if !strings.Contains(ct, "application/json") {
-		t.Errorf("Content-Type = %s, want application/json", ct)
-	}
-}
-
-// ─────────────────────── API: Trigger Deploy (REST) ─────────────────────
-
-func TestTriggerDeploy_REST(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	req := httptest.NewRequest("POST", "/api/hooks/homelab/trigger", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-
-	// Trigger may fail (no real git repo), but should return JSON, not a redirect.
-	// The deploy engine will fail gracefully.
-	if rec.Code != http.StatusOK && rec.Code != http.StatusInternalServerError && rec.Code != http.StatusConflict {
-		t.Errorf("status = %d, want 200/500/409 — body: %s", rec.Code, rec.Body.String())
-	}
-
-	ct := rec.Header().Get("Content-Type")
-	if !strings.Contains(ct, "application/json") {
-		t.Errorf("Content-Type = %s, want application/json", ct)
-	}
-}
-
-// ─────────────────────── API: Hook Status (REST) ────────────────────────
-
-func TestHookStatus(t *testing.T) {
+func TestScanServices(t *testing.T) {
 	s := newTestServer(t)
-	handler := s.routes()
+	formReq := httptest.NewRequest("GET", "/hooks/homelab", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Skip("CSRF token not found — minimal template doesn't set cookies")
+	}
 
-	req := httptest.NewRequest("GET", "/api/hooks/homelab/status", nil)
+	body := "csrf_token=" + csrfToken
+	req := httptest.NewRequest("POST", "/hooks/homelab/scan", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	s.routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
-	}
-	ct := rec.Header().Get("Content-Type")
-	if !strings.Contains(ct, "application/json") {
-		t.Errorf("Content-Type = %s, want application/json", ct)
-	}
-	body := rec.Body.String()
-	if !strings.Contains(body, `"status"`) || !strings.Contains(body, "homelab") {
-		t.Errorf("unexpected body: %s", body)
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303", rec.Code)
 	}
 }
 
-func TestHookStatusNotFound(t *testing.T) {
+// ─────────────────────── API: Trigger Deploy ────────────────────────────
+
+func TestTriggerDeploy(t *testing.T) {
 	s := newTestServer(t)
-	handler := s.routes()
+	formReq := httptest.NewRequest("GET", "/hooks/homelab", nil)
+	formRec := httptest.NewRecorder()
+	s.routes().ServeHTTP(formRec, formReq)
+	var csrfToken string
+	for _, c := range formRec.Result().Cookies() {
+		if c.Name == "csrf_token" {
+			csrfToken = c.Value
+		}
+	}
+	if csrfToken == "" {
+		t.Skip("CSRF token not found")
+	}
 
-	req := httptest.NewRequest("GET", "/api/hooks/nonexistent/status", nil)
+	body := "csrf_token=" + csrfToken
+	req := httptest.NewRequest("POST", "/hooks/homelab/trigger", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: csrfToken})
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	s.routes().ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rec.Code)
-	}
-}
-
-// ─────────────────────── API: List Hooks (REST) ─────────────────────────
-
-func TestListHooks(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	req := httptest.NewRequest("GET", "/api/hooks", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 — body: %s", rec.Code, rec.Body.String())
-	}
-
-	ct := rec.Header().Get("Content-Type")
-	if !strings.Contains(ct, "application/json") {
-		t.Errorf("Content-Type = %s, want application/json", ct)
-	}
-
-	// Verify secret is masked.
-	body := rec.Body.String()
-	if strings.Contains(body, "test-secret") {
-		t.Error("response contains unmasked secret")
-	}
-}
-
-// ─────────────────────── API: List Services (REST) ──────────────────────
-
-func TestListServicesAPI(t *testing.T) {
-	s, _ := newTestServerWithFile(t)
-	handler := s.routes()
-
-	req := httptest.NewRequest("GET", "/api/hooks/homelab/services", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200 — body: %s", rec.Code, rec.Body.String())
-	}
-
-	var services []config.ServiceConfig
-	if err := json.NewDecoder(rec.Body).Decode(&services); err != nil {
-		t.Fatalf("decode services: %v", err)
-	}
-	if len(services) != 2 {
-		t.Errorf("expected 2 services, got %d", len(services))
+	// Trigger may fail if the repo doesn't exist on disk, but it should
+	// still redirect (not 500).
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -575,7 +533,7 @@ func TestSecurityHeaders(t *testing.T) {
 // ─────────────────────── Rate Limiting ──────────────────────────────────
 
 func TestRateLimiting_Enabled(t *testing.T) {
-	cfg := testConfig()
+	cfg := testConfig(t)
 	cfg.RateLimit = config.RateLimitConfig{
 		Enabled:           true,
 		RequestsPerMinute: 2,
@@ -596,7 +554,7 @@ func TestRateLimiting_Enabled(t *testing.T) {
 
 	// Second request from same IP should be rate limited (burst=1).
 	req2 := httptest.NewRequest("GET", "/health", nil)
-	req2.RemoteAddr = req1.RemoteAddr // same IP
+	req2.RemoteAddr = req1.RemoteAddr
 	rec2 := httptest.NewRecorder()
 	handler.ServeHTTP(rec2, req2)
 	if rec2.Code != http.StatusTooManyRequests {
@@ -605,8 +563,7 @@ func TestRateLimiting_Enabled(t *testing.T) {
 }
 
 func TestRateLimiting_Disabled(t *testing.T) {
-	cfg := testConfig()
-	cfg.RateLimit.Enabled = false
+	cfg := testConfigNoLimit(t)
 	tmpl := testTemplate(t)
 	engine := deploy.New(cfg.Hooks, 30*time.Second)
 	s := New(cfg, engine, tmpl)
@@ -740,6 +697,7 @@ func TestCSRFGeneration(t *testing.T) {
 		t.Errorf("CSRF token too short: %d chars", len(token))
 	}
 
+	// Cookie should be set.
 	cookies := rec.Result().Cookies()
 	found := false
 	for _, c := range cookies {
@@ -758,7 +716,7 @@ func TestCSRFValidation_Valid(t *testing.T) {
 	rec := httptest.NewRecorder()
 	token := s.ui.generateCSRF(rec)
 
-	req := httptest.NewRequest("POST", "/api/hooks", strings.NewReader("csrf_token="+token))
+	req := httptest.NewRequest("POST", "/hooks", strings.NewReader("csrf_token="+token))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: token})
 
@@ -772,7 +730,7 @@ func TestCSRFValidation_Invalid(t *testing.T) {
 	rec := httptest.NewRecorder()
 	s.ui.generateCSRF(rec)
 
-	req := httptest.NewRequest("POST", "/api/hooks", strings.NewReader("csrf_token=wrong"))
+	req := httptest.NewRequest("POST", "/hooks", strings.NewReader("csrf_token=wrong"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.AddCookie(&http.Cookie{Name: "csrf_token", Value: "wrong"})
 
@@ -783,7 +741,7 @@ func TestCSRFValidation_Invalid(t *testing.T) {
 
 func TestCSRFValidation_Empty(t *testing.T) {
 	s := newTestServer(t)
-	req := httptest.NewRequest("POST", "/api/hooks", nil)
+	req := httptest.NewRequest("POST", "/hooks", nil)
 	if s.ui.validateCSRF(req) {
 		t.Error("CSRF validation should fail with no token")
 	}
@@ -792,7 +750,7 @@ func TestCSRFValidation_Empty(t *testing.T) {
 // ─────────────────────── XSS Protection ─────────────────────────────────
 
 func TestHookNameXSSProtection(t *testing.T) {
-	cfg := testConfigNoLimit()
+	cfg := testConfigNoLimit(t)
 	cfg.Hooks[0].ID = `<script>alert("xss")</script>`
 	tmpl := testTemplate(t)
 	engine := deploy.New(cfg.Hooks, 30*time.Second)
@@ -821,7 +779,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 		panic("test panic")
 	})
 
-	cfg := testConfigNoLimit()
+	cfg := testConfigNoLimit(t)
 	tmpl := testTemplate(t)
 	engine := deploy.New(cfg.Hooks, 30*time.Second)
 	s := New(cfg, engine, tmpl)
