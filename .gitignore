@@ -15,8 +15,6 @@
 .DS_Store
 Thumbs.db
 
-<<<<<<< HEAD
 # Temporary
 tmp/
-.gitignore
 push-observer-arm64
