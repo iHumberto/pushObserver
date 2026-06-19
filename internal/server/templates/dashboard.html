@@ -1,20 +1,439 @@
+{{/* dashboard.html — pushObserver server-side rendered dashboard.
+    Dark theme, vanilla CSS (no JS framework), homelab feel.
+    Sections: dashboard (hook list), new-hook, edit-hook, hook-detail.
+*/}}
+{{define "dashboard.html"}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>pushObserver — Dashboard</title>
+  <title>{{.Title}}</title>
   <style>
-    /* TODO: vanilla CSS — dark theme, homelab feel */
+    /* ──────────────── CSS Variables (Dark Theme) ──────────────── */
+    :root {
+      --bg:         #0d1117;
+      --bg-card:    #161b22;
+      --bg-input:   #0d1117;
+      --border:     #30363d;
+      --text:       #c9d1d9;
+      --text-dim:   #8b949e;
+      --text-bright:#f0f6fc;
+      --accent:     #58a6ff;
+      --green:      #3fb950;
+      --green-bg:   rgba(63,185,80,0.15);
+      --yellow:     #d2991d;
+      --yellow-bg:  rgba(210,153,29,0.15);
+      --red:        #f85149;
+      --red-bg:     rgba(248,81,73,0.15);
+      --radius:     6px;
+      --font:       -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --mono:       "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ──────────────── Header ──────────────── */
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-bright);
+      letter-spacing: -0.3px;
+    }
+    header h1 span { color: var(--accent); font-weight: 300; }
+    header nav { display: flex; gap: 16px; }
+    header nav a {
+      color: var(--text-dim);
+      font-size: 14px;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    header nav a:hover, header nav a.active {
+      color: var(--text-bright);
+      border-color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* ──────────────── Main ──────────────── */
+    main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    /* ──────────────── Alerts ──────────────── */
+    .alert {
+      padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px;
+      font-size: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .alert-error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); }
+    .alert-success { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+
+    /* ──────────────── Cards ──────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ──────────────── Table ──────────────── */
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    th { color: var(--text-dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { color: var(--text); }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    tr:last-child td { border-bottom: none; }
+
+    /* ──────────────── Status Badges ──────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;
+    }
+    .badge::before {
+      content: ""; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .badge-green { background: var(--green-bg); color: var(--green); }
+    .badge-green::before { background: var(--green); }
+    .badge-yellow { background: var(--yellow-bg); color: var(--yellow); }
+    .badge-yellow::before { background: var(--yellow); }
+    .badge-red { background: var(--red-bg); color: var(--red); }
+    .badge-red::before { background: var(--red); }
+
+    /* ──────────────── Forms ──────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-size: 13px; font-weight: 500;
+      color: var(--text-dim); margin-bottom: 6px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 8px 12px;
+      background: var(--bg-input); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-family: var(--font);
+      transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.25);
+    }
+    .form-group input::placeholder { color: var(--text-dim); opacity: 0.6; }
+    .form-group .hint {
+      font-size: 12px; color: var(--text-dim); margin-top: 4px;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius);
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); transition: all .15s;
+      font-family: var(--font); text-decoration: none;
+    }
+    .btn-primary { background: #238636; color: #fff; border-color: rgba(240,246,252,0.1); }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-danger { background: transparent; color: var(--red); border-color: var(--red); }
+    .btn-danger:hover { background: var(--red-bg); }
+    .btn-secondary { background: transparent; color: var(--text); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.05); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* ──────────────── Hook Detail ──────────────── */
+    .back-link { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; display: inline-block; }
+    .back-link:hover { color: var(--text); }
+    .meta { display: flex; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+    .meta-item { font-size: 13px; }
+    .meta-item strong { color: var(--text-dim); font-weight: 500; margin-right: 6px; }
+    .meta-item code { font-family: var(--mono); font-size: 12px; background: var(--bg); padding: 2px 6px; border-radius: 3px; }
+
+    /* ──────────────── Service Row ──────────────── */
+    .service-actions { display: flex; gap: 8px; align-items: center; margin-top: 16px; }
+    .service-actions form { display: inline; }
+
+    /* ──────────────── Responsive ──────────────── */
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .meta { flex-direction: column; gap: 8px; }
+      header { padding: 0 12px; }
+      main { padding: 16px 12px; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>pushObserver</h1>
-    <nav>{{/* TODO: hook list, create, edit, services */}}</nav>
+    <h1>push<span>Observer</span></h1>
+    <nav>
+      <a href="/" class="{{if eq .Section "dashboard"}}active{{end}}">Hooks</a>
+      <a href="/hooks/new" class="{{if eq .Section "new-hook"}}active{{end}}">+ New</a>
+      {{if .Hook}}<a href="/hooks/{{.Hook.ID}}" class="{{if eq .Section "hook-detail"}}active{{end}}">{{.Hook.ID}}</a>{{end}}
+    </nav>
   </header>
   <main>
-    {{/* TODO: dynamic content based on route */}}
+    {{if .Error}}
+    <div class="alert alert-error">{{.Error}}</div>
+    {{end}}
+    {{if .Success}}
+    <div class="alert alert-success">{{.Success}}</div>
+    {{end}}
+
+    {{/* ── Dashboard Section ── */}}
+    {{if eq .Section "dashboard"}}
+      {{template "dashboard-section" .}}
+
+    {{/* ── New Hook Section ── */}}
+    {{else if eq .Section "new-hook"}}
+      {{template "hook-form" dict "Title" "Create Hook" "CSRF" .CSRF "Hook" nil "Action" "/api/hooks" "Method" "POST"}}
+
+    {{/* ── Hook Detail Section ── */}}
+    {{else if eq .Section "hook-detail"}}
+      {{template "hook-detail-section" .}}
+
+    {{/* ── Edit Hook Section ── */}}
+    {{else if eq .Section "edit-hook"}}
+      {{template "hook-form" dict "Title" (printf "Edit %s" .Hook.ID) "CSRF" .CSRF "Hook" .Hook "Action" (printf "/api/hooks/%s" .Hook.ID) "Method" "PUT"}}
+    {{end}}
   </main>
 </body>
 </html>
+{{end}}
+
+{{/* ──────────────────── Dashboard Section ──────────────────── */}}
+{{define "dashboard-section"}}
+<div class="card">
+  <h2>Hooks ({{len .Hooks}})</h2>
+  {{if .Hooks}}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Repository</th>
+        <th>Branch</th>
+        <th>Services</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Hooks}}
+      <tr>
+        <td><a href="/hooks/{{.ID}}"><strong>{{.ID}}</strong></a></td>
+        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{.RepoURL}}">{{.RepoURL}}</td>
+        <td><code>{{.Branch}}</code></td>
+        <td>{{len .Services}}</td>
+        <td>
+          {{$res := index $.Results .ID}}
+          {{if $res}}
+            <span class="badge badge-{{statusClass $res}}">{{statusText $res}}</span>
+            <span style="font-size:11px;color:var(--text-dim);margin-left:4px;">{{formatDuration $res.Duration}}</span>
+          {{else}}
+            <span style="color:var(--text-dim);font-size:12px;">never</span>
+          {{end}}
+        </td>
+        <td>
+          <a href="/hooks/{{.ID}}/edit" class="btn btn-secondary btn-sm">Edit</a>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p style="color:var(--text-dim);text-align:center;padding:32px 0;">
+    No hooks configured.
+    <a href="/hooks/new">Create your first hook</a>.
+  </p>
+  {{end}}
+</div>
+{{end}}
+
+{{/* ──────────────────── Hook Form Section ──────────────────── */}}
+{{define "hook-form"}}
+<div class="card">
+  <h2>{{.Title}}</h2>
+  <form method="POST" action="{{.Action}}">
+    {{if .CSRF}}<input type="hidden" name="csrf_token" value="{{.CSRF}}">{{end}}
+    {{if eq .Method "PUT"}}<input type="hidden" name="_method" value="PUT">{{end}}
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="id">Hook ID *</label>
+        <input type="text" id="id" name="id" required placeholder="e.g. homelab"
+               {{if .Hook}}value="{{.Hook.ID}}" readonly{{end}}>
+        <p class="hint">Unique identifier. Used in webhook URL: /hook/{id}</p>
+      </div>
+      <div class="form-group">
+        <label for="branch">Branch</label>
+        <input type="text" id="branch" name="branch" placeholder="main"
+               value="{{if .Hook}}{{.Hook.Branch}}{{end}}">
+        <p class="hint">Git branch to track. Default: main</p>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="repo_url">Repository URL *</label>
+      <input type="text" id="repo_url" name="repo_url" required
+             placeholder="git@github.com:user/repo.git"
+             value="{{if .Hook}}{{.Hook.RepoURL}}{{end}}">
+      <p class="hint">SSH or HTTPS URL. For private repos, configure git_ssh_key below.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="repo_dir">Repository Directory *</label>
+      <input type="text" id="repo_dir" name="repo_dir" required
+             placeholder="/home/webhook/repos/my-app"
+             value="{{if .Hook}}{{.Hook.RepoDir}}{{end}}">
+      <p class="hint">Absolute path where the repository will be cloned.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="git_ssh_key">SSH Key Path</label>
+      <input type="text" id="git_ssh_key" name="git_ssh_key"
+             placeholder="/home/webhook/.ssh/deploy_key"
+             value="{{if .Hook}}{{.Hook.GitSSHKey}}{{end}}">
+      <p class="hint">Deploy key for private repositories. Leave empty for public repos or HTTPS.</p>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="hmac_type">HMAC Type</label>
+        <select id="hmac_type" name="hmac_type">
+          <option value="sha256" {{if and .Hook (eq .Hook.HMAC.Type "sha256")}}selected{{end}}>SHA-256 (GitHub, Forgejo, Gitea)</option>
+          <option value="sha1" {{if and .Hook (eq .Hook.HMAC.Type "sha1")}}selected{{end}}>SHA-1 (GitHub legacy)</option>
+          <option value="plain" {{if and .Hook (eq .Hook.HMAC.Type "plain")}}selected{{end}}>Token (GitLab)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="hmac_secret">HMAC Secret</label>
+        <input type="password" id="hmac_secret" name="hmac_secret"
+               placeholder="${WEBHOOK_SECRET}"
+               value="{{if .Hook}}{{.Hook.HMAC.Secret}}{{end}}">
+        <p class="hint">Use ${ENV_VAR} syntax to avoid plain-text secrets.</p>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="hmac_header">HMAC Header</label>
+      <input type="text" id="hmac_header" name="hmac_header"
+             placeholder="X-Hub-Signature-256"
+             value="{{if .Hook}}{{.Hook.HMAC.Header}}{{end}}">
+      <p class="hint">HTTP header containing the HMAC signature.</p>
+    </div>
+
+    <div class="form-group">
+      <label for="content_type">Content-Type</label>
+      <select id="content_type" name="content_type">
+        <option value="json" {{if and .Hook (eq .Hook.ContentType "json")}}selected{{end}}>JSON</option>
+        <option value="form" {{if and .Hook (eq .Hook.ContentType "form")}}selected{{end}}>Form (URL-encoded)</option>
+      </select>
+      <p class="hint">Expected Content-Type of incoming webhooks.</p>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{if .Hook}}Save Changes{{else}}Create Hook{{end}}</button>
+      <a href="/" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}
+
+{{/* ──────────────────── Hook Detail Section ──────────────────── */}}
+{{define "hook-detail-section"}}
+<a href="/" class="back-link">← Back to all hooks</a>
+
+<div class="card">
+  <h2>{{.Hook.ID}}</h2>
+  <div class="meta">
+    <div class="meta-item"><strong>Repo:</strong> <code>{{.Hook.RepoURL}}</code></div>
+    <div class="meta-item"><strong>Branch:</strong> <code>{{.Hook.Branch}}</code></div>
+    <div class="meta-item"><strong>Dir:</strong> <code>{{.Hook.RepoDir}}</code></div>
+  </div>
+
+  <h2 style="margin-top:24px;">Services ({{len .Services}})</h2>
+  {{if .Services}}
+  <table>
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th>Path</th>
+        <th>Restart Trigger</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Services}}
+      <tr>
+        <td><strong>{{.Name}}</strong></td>
+        <td><code>{{.Path}}</code></td>
+        <td>
+          <form method="GET" style="display:inline;">
+            <select name="trigger" style="font-size:12px;padding:4px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);" onchange="this.form.submit()">
+              {{triggerOptions .RestartTrigger}}
+            </select>
+          </form>
+        </td>
+        <td>
+          {{if .StatusClass}}
+            <span class="badge badge-{{.StatusClass}}">{{.Status}}</span>
+            {{if .Duration}}<span style="font-size:11px;color:var(--text-dim);margin-left:4px;">{{.Duration}}</span>{{end}}
+          {{else}}
+            <span style="color:var(--text-dim);font-size:12px;">{{.LastDeploy}}</span>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p style="color:var(--text-dim);text-align:center;padding:24px 0;">
+    No services detected.
+    <a href="/api/hooks/{{.Hook.ID}}/scan" onclick="event.preventDefault();this.closest('p').querySelector('form').submit();">Scan repo for services →</a>
+  </p>
+  <form method="POST" action="/api/hooks/{{.Hook.ID}}/scan" style="display:none;">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+  </form>
+  {{end}}
+
+  <div class="service-actions">
+    <form method="POST" action="/api/hooks/{{.Hook.ID}}/scan" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <button type="submit" class="btn btn-secondary btn-sm">🔍 Scan for new services</button>
+    </form>
+    <form method="POST" action="/api/hooks/{{.Hook.ID}}/trigger" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <button type="submit" class="btn btn-primary btn-sm">▶ Deploy Now</button>
+    </form>
+    <a href="/hooks/{{.Hook.ID}}/edit" class="btn btn-secondary btn-sm">✏ Edit Hook</a>
+    <form method="POST" action="/api/hooks/{{.Hook.ID}}" style="display:inline;" onsubmit="return confirm('Delete hook {{.Hook.ID}}? This cannot be undone.')">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <input type="hidden" name="_method" value="DELETE">
+      <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+    </form>
+  </div>
+</div>
+{{end}}

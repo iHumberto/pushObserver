@@ -624,7 +624,7 @@ func TestScanServices_RepoWithCompose(t *testing.T) {
 		".cache": true, // hidden — should be skipped
 	})
 
-	services := scanServices(tmpDir)
+	services := ScanServices(tmpDir)
 	names := serviceNames(services)
 
 	if len(services) != 2 {
@@ -652,7 +652,7 @@ func TestScanServices_ComposeInRepoRoot(t *testing.T) {
 	os.MkdirAll(tmpDir, 0o755)
 	os.WriteFile(filepath.Join(tmpDir, "docker-compose.yaml"), []byte("services:\n"), 0o644)
 
-	services := scanServices(tmpDir)
+	services := ScanServices(tmpDir)
 	if len(services) != 1 {
 		t.Fatalf("expected 1 service (root), got %d", len(services))
 	}
@@ -663,21 +663,21 @@ func TestScanServices_ComposeInRepoRoot(t *testing.T) {
 
 func TestScanServices_EmptyDir(t *testing.T) {
 	tmpDir := t.TempDir()
-	services := scanServices(tmpDir)
+	services := ScanServices(tmpDir)
 	if len(services) != 0 {
 		t.Errorf("expected 0 services in empty dir, got %d", len(services))
 	}
 }
 
 func TestScanServices_EmptyPath(t *testing.T) {
-	services := scanServices("")
+	services := ScanServices("")
 	if len(services) != 0 {
 		t.Errorf("expected 0 services for empty path, got %d", len(services))
 	}
 }
 
 func TestScanServices_NonexistentDir(t *testing.T) {
-	services := scanServices("/nonexistent/path/12345")
+	services := ScanServices("/nonexistent/path/12345")
 	if len(services) != 0 {
 		t.Errorf("expected 0 services for nonexistent dir, got %d", len(services))
 	}
@@ -696,8 +696,8 @@ func TestScanServices_SymlinkOutsideRepo(t *testing.T) {
 	os.MkdirAll(filepath.Join(tmpDir, "escape"), 0o755) // this actually fails since escape is not a dir...
 
 	// Actually, os.Symlink creates a symlink; os.MkdirAll fails if target
-	// exists. Let's test that scanServices handles the case gracefully.
-	services := scanServices(tmpDir)
+	// exists. Let's test that ScanServices handles the case gracefully.
+	services := ScanServices(tmpDir)
 	// The symlink name is "escape" — os.ReadDir returns it as DirEntry.
 	// Since we check for docker-compose.yaml inside, and /etc likely doesn't
 	// have one, it should be skipped.
@@ -718,7 +718,7 @@ func TestScanServices_AdjacentDockerComposeFile(t *testing.T) {
 	os.MkdirAll(subDir, 0o755)
 	os.WriteFile(filepath.Join(subDir, "docker-compose.yaml"), []byte(""), 0o644)
 
-	services := scanServices(tmpDir)
+	services := ScanServices(tmpDir)
 	if len(services) != 1 {
 		t.Fatalf("expected 1 service, got %d", len(services))
 	}

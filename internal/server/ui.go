@@ -68,8 +68,8 @@ func NewUIRenderer(tmpl *template.Template, cfg *config.Config, server *Server) 
 
 // ─────────────────────── Template Functions ─────────────────────────────
 
-// templateFuncs returns the function map registered with Go templates.
-func templateFuncs() template.FuncMap {
+// TemplateFuncs returns the function map registered with Go templates.
+func TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"statusClass":    statusClass,
 		"statusText":     statusText,
@@ -332,11 +332,15 @@ func (ui *UIRenderer) EditHookForm(w http.ResponseWriter, r *http.Request) {
 
 // CreateHook handles POST /api/hooks — creates a new hook and saves to config.
 func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
+	slog.Debug("CreateHook called", "content_type", r.Header.Get("Content-Type"), "method", r.Method)
 	if err := r.ParseForm(); err != nil {
+		slog.Error("CreateHook ParseForm failed", "error", err)
 		ui.redirectError(w, r, "/hooks/new", "failed to parse form")
 		return
 	}
+	slog.Debug("CreateHook form parsed", "csrf_token", r.FormValue("csrf_token"), "id", r.FormValue("id"))
 	if !ui.validateCSRF(r) {
+		slog.Error("CreateHook CSRF validation failed")
 		ui.redirectError(w, r, "/hooks/new", "invalid CSRF token")
 		return
 	}

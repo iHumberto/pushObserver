@@ -10,34 +10,62 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"html/template"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
+	"forgejo.humbertof.dev/humberto/push-observer/internal/deploy"
+	"forgejo.humbertof.dev/humberto/push-observer/internal/server"
 )
 
 func main() {
-	// Structured JSON logging to stdout — ready for log aggregation.
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
+	logLevel := slog.LevelInfo
+	if os.Getenv("PUSH_OBSERVER_LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	})))
 
-	slog.Info("pushObserver starting",
-		"version", "1.0.0-dev",
-		"pid", os.Getpid(),
-	)
+	slog.Info("pushObserver starting", "version", "1.0.0-dev", "pid", os.Getpid())
 
-	// TODO: Load config from push-observer.yaml (internal/config)
-	// TODO: Initialize deploy engine (internal/deploy)
-	// TODO: Start HTTP server (internal/server)
+	// Load configuration.
+	configPath := os.Getenv("PUSH_OBSERVER_CONFIG")
+	if configPath == "" {
+		configPath = "push-observer.yaml"
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		slog.Error("failed to load config", "path", configPath, "error", err)
+		os.Exit(1)
+	}
+
+	// Initialize deploy engine.
+	engine := deploy.New(cfg.Hooks, cfg.Server.WriteTimeout.Duration())
+
+	// Parse HTML templates.
+	tmpl := template.Must(template.New("").Funcs(server.TemplateFuncs()).ParseGlob("internal/server/templates/*.html"))
+
+	// Create and start HTTP server.
+	srv := server.New(cfg, engine, tmpl)
 
 	// Graceful shutdown on SIGINT/SIGTERM.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	<-ctx.Done()
-	slog.Info("pushObserver shutting down", "signal", ctx.Err())
-	fmt.Println("pushObserver stopped.")
+	go func() {
+		<-ctx.Done()
+		slog.Info("pushObserver shutting down", "signal", ctx.Err())
+		srv.Shutdown()
+	}()
+
+	if err := srv.Start(); err != nil {
+		slog.Error("server stopped with error", "error", err)
+		os.Exit(1)
+	}
+
+	slog.Info("pushObserver stopped.")
 }

@@ -25,6 +25,8 @@ type Config struct {
 	Notifications NotifyConfig    `yaml:"notifications"`
 	RateLimit     RateLimitConfig `yaml:"rate_limit"`
 	Logging       LoggingConfig   `yaml:"logging"`
+
+	configPath string // set by Load; used by Save to write back
 }
 
 // ServerConfig holds the HTTP server settings.
@@ -37,51 +39,51 @@ type ServerConfig struct {
 
 // HookConfig defines a single webhook-to-deploy pipeline.
 type HookConfig struct {
-	ID          string            `yaml:"id"`
-	RepoURL     string            `yaml:"repo_url"`
-	RepoDir     string            `yaml:"repo_dir"`
-	Branch      string            `yaml:"branch"`
-	GitSSHKey   string            `yaml:"git_ssh_key"`
-	HMAC        HMACConfig        `yaml:"hmac"`
-	ContentType string            `yaml:"content_type"`
-	Services    []ServiceConfig   `yaml:"services"`
-	Compose     ComposeConfig     `yaml:"compose"`
-	Deploy      DeployConfig      `yaml:"deploy"`
-	Notify      NotifyHookConfig  `yaml:"notify"`
+	ID          string           `yaml:"id" json:"id"`
+	RepoURL     string           `yaml:"repo_url" json:"repo_url"`
+	RepoDir     string           `yaml:"repo_dir" json:"repo_dir"`
+	Branch      string           `yaml:"branch" json:"branch"`
+	GitSSHKey   string           `yaml:"git_ssh_key" json:"git_ssh_key"`
+	HMAC        HMACConfig       `yaml:"hmac" json:"hmac"`
+	ContentType string           `yaml:"content_type" json:"content_type"`
+	Services    []ServiceConfig  `yaml:"services" json:"services"`
+	Compose     ComposeConfig    `yaml:"compose" json:"compose"`
+	Deploy      DeployConfig     `yaml:"deploy" json:"deploy"`
+	Notify      NotifyHookConfig `yaml:"notify" json:"notify"`
 }
 
 // HMACConfig defines the HMAC validation settings for a hook.
 type HMACConfig struct {
-	Type   string `yaml:"type"`   // sha256, sha1, plain
-	Secret string `yaml:"secret"` // may contain ${VAR}
-	Header string `yaml:"header"` // X-Hub-Signature-256, etc.
+	Type   string `yaml:"type" json:"type"`     // sha256, sha1, plain
+	Secret string `yaml:"secret" json:"secret"` // may contain ${VAR}
+	Header string `yaml:"header" json:"header"` // X-Hub-Signature-256, etc.
 }
 
 // ServiceConfig maps a docker-compose service to a directory path.
 type ServiceConfig struct {
-	Name           string `yaml:"name"`
-	Path           string `yaml:"path"`           // relative to repo_dir
-	RestartTrigger string `yaml:"restart_trigger"` // default, always, on-change
+	Name           string `yaml:"name" json:"name"`
+	Path           string `yaml:"path" json:"path"`                       // relative to repo_dir
+	RestartTrigger string `yaml:"restart_trigger" json:"restart_trigger"` // default, always, on-change
 }
 
 // ComposeConfig controls docker compose behaviour.
 type ComposeConfig struct {
-	Build   bool `yaml:"build"`
-	Cleanup bool `yaml:"cleanup"`
+	Build   bool `yaml:"build" json:"build"`
+	Cleanup bool `yaml:"cleanup" json:"cleanup"`
 }
 
 // DeployConfig controls the deploy pipeline.
 type DeployConfig struct {
-	Timeout          Duration `yaml:"timeout"`
-	Retry            int      `yaml:"retry"`
-	CustomExtensions []string `yaml:"custom_extensions"` // file extensions that trigger restart (e.g., [".py", ".yaml"])
+	Timeout          Duration `yaml:"timeout" json:"timeout"`
+	Retry            int      `yaml:"retry" json:"retry"`
+	CustomExtensions []string `yaml:"custom_extensions" json:"custom_extensions"` // file extensions that trigger restart (e.g., [".py", ".yaml"])
 }
 
 // NotifyHookConfig controls per-hook notification behaviour.
 type NotifyHookConfig struct {
-	OnSuccess   bool `yaml:"on_success"`
-	OnFailure   bool `yaml:"on_failure"`
-	OnNoChanges bool `yaml:"on_no_changes"`
+	OnSuccess   bool `yaml:"on_success" json:"on_success"`
+	OnFailure   bool `yaml:"on_failure" json:"on_failure"`
+	OnNoChanges bool `yaml:"on_no_changes" json:"on_no_changes"`
 }
 
 // NotifyConfig holds global notification settings (Apprise).
@@ -123,6 +125,11 @@ func (d *Duration) UnmarshalYAML(value *yaml.Node) error {
 	}
 	*d = Duration(dur)
 	return nil
+}
+
+// MarshalYAML implements yaml.Marshaler so Duration is serialized as "30s" string.
+func (d Duration) MarshalYAML() (interface{}, error) {
+	return time.Duration(d).String(), nil
 }
 
 // Duration returns the underlying time.Duration.
@@ -196,12 +203,14 @@ func Load(path string) (*Config, error) {
 	// don't have explicit services defined.
 	for i := range cfg.Hooks {
 		if len(cfg.Hooks[i].Services) == 0 {
-			cfg.Hooks[i].Services = scanServices(cfg.Hooks[i].RepoDir)
+			cfg.Hooks[i].Services = ScanServices(cfg.Hooks[i].RepoDir)
 		}
 	}
 
 	// Apply defaults for missing optional fields.
 	cfg.applyDefaults()
+
+	cfg.configPath = path
 
 	return &cfg, nil
 }
@@ -402,16 +411,102 @@ func writeDefault(path string, cfg *Config) error {
 	return nil
 }
 
+// ──────────────────── Persistence ───────────────────────────────────────
+
+// Save writes the current configuration back to the YAML file it was loaded from.
+// If the config was created via DefaultConfig (not loaded from disk), returns an error.
+func (c *Config) Save() error {
+	if c.configPath == "" {
+		return fmt.Errorf("cannot save: config was not loaded from a file (use Load first)")
+	}
+	return writeDefault(c.configPath, c)
+}
+
+// ──────────────────── Hook CRUD ─────────────────────────────────────────
+
+// HookByID returns a pointer to the hook with the given ID, or nil if not found.
+func (c *Config) HookByID(id string) *HookConfig {
+	for i := range c.Hooks {
+		if c.Hooks[i].ID == id {
+			return &c.Hooks[i]
+		}
+	}
+	return nil
+}
+
+// AddHook appends a new hook to the configuration and persists it.
+// Returns an error if a hook with the same ID already exists.
+func (c *Config) AddHook(h HookConfig) error {
+	if c.HookByID(h.ID) != nil {
+		return fmt.Errorf("hook %q already exists", h.ID)
+	}
+	c.Hooks = append(c.Hooks, h)
+	if err := c.Save(); err != nil {
+		// Rollback: remove the appended hook
+		c.Hooks = c.Hooks[:len(c.Hooks)-1]
+		return fmt.Errorf("saving config after adding hook %q: %w", h.ID, err)
+	}
+	return nil
+}
+
+// UpdateHook replaces an existing hook's configuration and persists.
+// Returns an error if the hook does not exist.
+func (c *Config) UpdateHook(id string, updated HookConfig) error {
+	idx := -1
+	for i := range c.Hooks {
+		if c.Hooks[i].ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return fmt.Errorf("hook %q not found", id)
+	}
+	// Preserve the ID from the URL, not the request body
+	updated.ID = id
+	old := c.Hooks[idx]
+	c.Hooks[idx] = updated
+	if err := c.Save(); err != nil {
+		// Rollback
+		c.Hooks[idx] = old
+		return fmt.Errorf("saving config after updating hook %q: %w", id, err)
+	}
+	return nil
+}
+
+// RemoveHook deletes a hook by ID and persists.
+// Returns an error if the hook does not exist.
+func (c *Config) RemoveHook(id string) error {
+	idx := -1
+	for i := range c.Hooks {
+		if c.Hooks[i].ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return fmt.Errorf("hook %q not found", id)
+	}
+	removed := c.Hooks[idx]
+	c.Hooks = append(c.Hooks[:idx], c.Hooks[idx+1:]...)
+	if err := c.Save(); err != nil {
+		// Rollback: restore the removed hook at its original position
+		c.Hooks = append(c.Hooks[:idx], append([]HookConfig{removed}, c.Hooks[idx:]...)...)
+		return fmt.Errorf("saving config after removing hook %q: %w", id, err)
+	}
+	return nil
+}
+
 // ──────────────────── docker-compose.yaml scanning ──────────────────────
 
 // dockerComposeFile is the canonical docker compose filename.
 const dockerComposeFile = "docker-compose.yaml"
 
-// scanServices walks repoDir and returns ServiceConfig entries for every
+// ScanServices walks repoDir and returns ServiceConfig entries for every
 // subdirectory that contains a docker-compose.yaml file. The path is relative
 // to repoDir. If repoDir itself contains docker-compose.yaml, it's included
 // with path ".".
-func scanServices(repoDir string) []ServiceConfig {
+func ScanServices(repoDir string) []ServiceConfig {
 	if repoDir == "" {
 		return nil
 	}

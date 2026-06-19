@@ -62,6 +62,16 @@ var defaultTriggerFiles = map[string]bool{
 	"docker-compose.yml":  true,
 }
 
+// ─────────────────────── Config access ──────────────────────────────────
+
+// HookByID returns the hook config for the given ID, or nil if not found.
+func (e *Engine) HookByID(hookID string) *config.HookConfig {
+	if hk, ok := e.hooks[hookID]; ok {
+		return &hk
+	}
+	return nil
+}
+
 // ───────────────────────── Constructor ──────────────────────────────────
 
 // New creates a new deploy Engine with the given hooks and default timeout.

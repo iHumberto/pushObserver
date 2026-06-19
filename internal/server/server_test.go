@@ -122,11 +122,11 @@ logging:
 // testTemplate parses the dashboard.html template for testing.
 func testTemplate(t *testing.T) *template.Template {
 	t.Helper()
-	tmpl := template.New("").Funcs(templateFuncs())
+	tmpl := template.New("").Funcs(TemplateFuncs())
 	_, err := tmpl.ParseGlob("templates/*.html")
 	if err != nil {
 		// Fallback: create a minimal inline template for tests.
-		tmpl = template.Must(template.New("dashboard.html").Funcs(templateFuncs()).Parse(`
+		tmpl = template.Must(template.New("dashboard.html").Funcs(TemplateFuncs()).Parse(`
 {{define "dashboard.html"}}<html><body>{{.Title}} — {{.Section}}</body></html>{{end}}
 {{define "dashboard-section"}}dashboard{{end}}
 {{define "hook-form"}}form{{end}}
