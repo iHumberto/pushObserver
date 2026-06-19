@@ -376,3 +376,190 @@ func TestPullWithoutClone(t *testing.T) {
 		t.Fatal("Pull() without prior clone should error")
 	}
 }
+
+// ───────────────── edge case tests ─────────────────
+
+// TestPull_ForcePush simulates a force push (history rewrite)
+// and verifies Pull handles it correctly (hard reset).
+func TestPull_ForcePush(t *testing.T) {
+	srcDir := tempGitRepo(t)
+	remote := bareRemote(t, srcDir)
+	workDir := filepath.Join(t.TempDir(), "forcepush-target")
+
+	engine := New(workDir, "", 30*time.Second)
+	if err := engine.Clone(t.Context(), remote, "main"); err != nil {
+		t.Fatalf("Clone() error: %v", err)
+	}
+
+	// Rewrite history in source: amend the initial commit
+	writeFile(t, srcDir, "force-push.txt", "rewritten history")
+	runGit(t, srcDir, "add", "force-push.txt")
+	runGit(t, srcDir, "commit", "--amend", "-m", "rewritten initial commit")
+	runGit(t, srcDir, "push", "--force", "origin", "main")
+
+	// Pull should succeed despite force push (hard reset handles this)
+	if err := engine.Pull(t.Context(), "main"); err != nil {
+		t.Fatalf("Pull() after force push should succeed: %v", err)
+	}
+
+	// The force-pushed file should be present in the workDir
+	if _, err := os.Stat(filepath.Join(workDir, "force-push.txt")); os.IsNotExist(err) {
+		t.Error("force-push.txt not found after pull — force push not handled")
+	}
+}
+
+// TestChangedFiles_MultipleFiles verifies diff detects multiple changed files.
+func TestChangedFiles_MultipleFiles(t *testing.T) {
+	srcDir := tempGitRepo(t)
+	remote := bareRemote(t, srcDir)
+	workDir := filepath.Join(t.TempDir(), "multidiff-target")
+
+	engine := New(workDir, "", 30*time.Second)
+	if err := engine.Clone(t.Context(), remote, "main"); err != nil {
+		t.Fatalf("Clone() error: %v", err)
+	}
+
+	initialCommit := lastCommitHash(t, workDir)
+
+	// Add multiple files in source
+	addCommit(t, srcDir, "file-a.txt", "content A")
+	addCommit(t, srcDir, "file-b.txt", "content B")
+	// Create nested directory first, then add nested file
+	os.MkdirAll(filepath.Join(srcDir, "nested"), 0o755)
+	addCommit(t, srcDir, "nested/file-c.txt", "content C")
+	runGit(t, srcDir, "push", "origin", "main")
+
+	// Pull
+	if err := engine.Pull(t.Context(), "main"); err != nil {
+		t.Fatalf("Pull() error: %v", err)
+	}
+
+	files, err := engine.ChangedFiles(t.Context(), initialCommit)
+	if err != nil {
+		t.Fatalf("ChangedFiles() error: %v", err)
+	}
+
+	if len(files) < 3 {
+		t.Errorf("ChangedFiles() = %d files, want at least 3: %v", len(files), files)
+	}
+
+	// Verify all expected files are in the list
+	expected := map[string]bool{
+		"file-a.txt":      false,
+		"file-b.txt":      false,
+		"nested/file-c.txt": false,
+	}
+	for _, f := range files {
+		if _, ok := expected[f]; ok {
+			expected[f] = true
+		}
+	}
+	for name, found := range expected {
+		if !found {
+			t.Errorf("expected file %q in diff, not found. Files: %v", name, files)
+		}
+	}
+}
+
+// TestClone_NonMainBranch verifies clone works with branches other than "main".
+func TestClone_NonMainBranch(t *testing.T) {
+	srcDir := tempGitRepo(t)
+	// Create and push a "develop" branch
+	runGit(t, srcDir, "checkout", "-b", "develop")
+	writeFile(t, srcDir, "develop-only.txt", "develop branch file")
+	runGit(t, srcDir, "add", "develop-only.txt")
+	runGit(t, srcDir, "commit", "-m", "develop branch commit")
+
+	remote := t.TempDir()
+	runGit(t, remote, "init", "--bare")
+	runGit(t, srcDir, "remote", "add", "origin", remote)
+	runGit(t, srcDir, "push", "origin", "develop")
+
+	workDir := filepath.Join(t.TempDir(), "develop-target")
+
+	engine := New(workDir, "", 30*time.Second)
+	err := engine.Clone(t.Context(), remote, "develop")
+	if err != nil {
+		t.Fatalf("Clone() develop branch error: %v", err)
+	}
+
+	// Verify develop-only.txt exists
+	if _, err := os.Stat(filepath.Join(workDir, "develop-only.txt")); os.IsNotExist(err) {
+		t.Error("develop-only.txt not found after cloning develop branch")
+	}
+
+	// README.md from main should NOT be present (we cloned develop)
+	if _, err := os.Stat(filepath.Join(workDir, "README.md")); err == nil {
+		t.Log("README.md found — may exist if develop branched from main after README.md was committed")
+	}
+
+	// Verify current branch is develop
+	branch, err := engine.CurrentBranch(t.Context())
+	if err != nil {
+		t.Fatalf("CurrentBranch() error: %v", err)
+	}
+	if branch != "develop" {
+		t.Errorf("CurrentBranch() = %q, want \"develop\"", branch)
+	}
+}
+
+// TestClone_EmptyExistingDir verifies cloning into an empty existing directory succeeds.
+func TestClone_EmptyExistingDir(t *testing.T) {
+	srcDir := tempGitRepo(t)
+	remote := bareRemote(t, srcDir)
+
+	workDir := filepath.Join(t.TempDir(), "empty-dir-target")
+	// Create an EMPTY directory (no files)
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	engine := New(workDir, "", 30*time.Second)
+	err := engine.Clone(t.Context(), remote, "main")
+	if err != nil {
+		t.Fatalf("Clone() into empty existing dir should succeed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(workDir, "README.md")); os.IsNotExist(err) {
+		t.Error("README.md not found after cloning into empty dir")
+	}
+}
+
+// TestChangedFiles_ShellMetacharactersInCommit rejects dangerous commit hashes.
+func TestChangedFiles_ShellMetacharactersInCommit(t *testing.T) {
+	srcDir := tempGitRepo(t)
+	remote := bareRemote(t, srcDir)
+	workDir := filepath.Join(t.TempDir(), "shellmeta-diff-target")
+
+	engine := New(workDir, "", 30*time.Second)
+	if err := engine.Clone(t.Context(), remote, "main"); err != nil {
+		t.Fatalf("Clone() error: %v", err)
+	}
+
+	_, err := engine.ChangedFiles(t.Context(), "abc; rm -rf /")
+	if err == nil {
+		t.Fatal("ChangedFiles() with shell metacharacters in commit should error")
+	}
+}
+
+// TestLastCommit_WithoutClone validates LastCommit fails without a repo.
+func TestLastCommit_WithoutClone(t *testing.T) {
+	workDir := filepath.Join(t.TempDir(), "no-repo-target")
+
+	engine := New(workDir, "", 30*time.Second)
+	_, err := engine.LastCommit(t.Context())
+	if err == nil {
+		t.Fatal("LastCommit() without git repository should error")
+	}
+}
+
+// TestCurrentBranch_WithoutClone validates CurrentBranch fails without a repo.
+func TestCurrentBranch_WithoutClone(t *testing.T) {
+	workDir := filepath.Join(t.TempDir(), "no-branch-target")
+
+	engine := New(workDir, "", 30*time.Second)
+	_, err := engine.CurrentBranch(t.Context())
+	if err == nil {
+		t.Fatal("CurrentBranch() without git repository should error")
+	}
+}
