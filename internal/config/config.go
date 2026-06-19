@@ -72,8 +72,9 @@ type ComposeConfig struct {
 
 // DeployConfig controls the deploy pipeline.
 type DeployConfig struct {
-	Timeout Duration `yaml:"timeout"`
-	Retry   int      `yaml:"retry"`
+	Timeout          Duration `yaml:"timeout"`
+	Retry            int      `yaml:"retry"`
+	CustomExtensions []string `yaml:"custom_extensions"` // file extensions that trigger restart (e.g., [".py", ".yaml"])
 }
 
 // NotifyHookConfig controls per-hook notification behaviour.
