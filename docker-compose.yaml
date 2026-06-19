@@ -1,0 +1,41 @@
+# Example docker-compose.yaml for pushObserver deployment
+# Mount the Docker socket so pushObserver can run docker compose commands
+# Mount deploy keys for private repos
+# Mount config file at /home/webhook/push-observer.yaml
+
+version: "3.8"
+
+services:
+  push-observer:
+    image: ghcr.io/humberto/push-observer:latest
+    container_name: push-observer
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      # Docker socket — required to run docker compose commands
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Config file
+      - ./push-observer.yaml:/home/webhook/push-observer.yaml:ro
+      # Deploy keys for private repos (optional)
+      - /home/pi/.ssh/push_observer_deploy_key:/home/webhook/.ssh/deploy_key:ro
+    environment:
+      - PUSH_OBSERVER_API_KEY=${PUSH_OBSERVER_API_KEY:-}
+      - HMAC_SECRET_HOMELAB=${HMAC_SECRET_HOMELAB:-}
+    networks:
+      - apprise-net
+
+  # Optional: Apprise for notifications
+  # See https://github.com/caronc/apprise for configuration
+  apprise:
+    image: caronc/apprise:latest
+    container_name: apprise
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    networks:
+      - apprise-net
+
+networks:
+  apprise-net:
+    driver: bridge

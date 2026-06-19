@@ -1,0 +1,86 @@
+# GoReleaser configuration for pushObserver
+# Builds multi-arch static binaries and Docker images
+# See: https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go vet ./...
+
+builds:
+  - id: push-observer
+    main: ./cmd/push-observer
+    binary: push-observer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    files:
+      - LICENSE
+      - README.md
+      - push-observer.yaml
+
+dockers:
+  - image_templates:
+      - "ghcr.io/humberto/push-observer:{{ .Version }}-amd64"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+  - image_templates:
+      - "ghcr.io/humberto/push-observer:{{ .Version }}-arm64"
+    use: buildx
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+
+docker_manifests:
+  - name_template: "ghcr.io/humberto/push-observer:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/humberto/push-observer:{{ .Version }}-amd64"
+      - "ghcr.io/humberto/push-observer:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/humberto/push-observer:latest"
+    image_templates:
+      - "ghcr.io/humberto/push-observer:{{ .Version }}-amd64"
+      - "ghcr.io/humberto/push-observer:{{ .Version }}-arm64"
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-dev"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"

@@ -1,0 +1,55 @@
+# pushObserver v1.0.0 — default configuration
+# Copy this file to push-observer.yaml and customize for your environment.
+# Secrets use ${ENV_VAR} or ${ENV_VAR:default} syntax — never store secrets in plain text.
+
+server:
+  port: 9090
+  host: "0.0.0.0"
+  read_timeout: 30s
+  write_timeout: 300s   # deploy can take time
+
+# Optional: API key for management endpoints (GET/POST /api/hooks)
+# api_key: "${PUSH_OBSERVER_API_KEY}"
+
+hooks:
+  # Example hook — uncomment and customize
+  # - id: homelab
+  #   repo_url: "git@github.com:user/repo.git"
+  #   repo_dir: "/home/pi/docker"
+  #   branch: "main"
+  #   git_ssh_key: "/home/webhook/.ssh/deploy_key"
+  #   hmac:
+  #     type: sha256
+  #     secret: "${HMAC_SECRET_HOMELAB}"
+  #     header: "X-Hub-Signature-256"
+  #   content_type: "json"
+  #   services:
+  #     - name: myservice
+  #       path: "myservice"
+  #       restart_trigger: default
+  #   compose:
+  #     build: true
+  #     cleanup: false
+  #   deploy:
+  #     timeout: 300s
+  #     retry: 0
+  #   notify:
+  #     on_success: true
+  #     on_failure: true
+  #     on_no_changes: false
+
+notifications:
+  apprise_url: "http://apprise:8000"
+  tag_success: "deploy-success"
+  tag_failure: "deploy-failure"
+  tag_no_changes: ""
+
+rate_limit:
+  enabled: true
+  requests_per_minute: 30
+  burst: 5
+
+logging:
+  level: "info"     # debug, info, warn, error
+  format: "json"    # json or text
+  file: ""          # empty = stdout
