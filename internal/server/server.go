@@ -23,6 +23,7 @@ import (
 	"forgejo.humbertof.dev/humberto/push-observer/internal/api"
 	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
 	"forgejo.humbertof.dev/humberto/push-observer/internal/deploy"
+	"forgejo.humbertof.dev/humberto/push-observer/internal/notify"
 	"forgejo.humbertof.dev/humberto/push-observer/internal/ratelimit"
 	"forgejo.humbertof.dev/humberto/push-observer/internal/webhook"
 )
@@ -36,6 +37,7 @@ type Server struct {
 	deploy    *deploy.Engine
 	api       *api.Handler
 	webhook   *webhook.Handler
+	notifier  *notify.Notifier
 	limiter   *ratelimit.Limiter
 	srv       *http.Server
 	resultsMu sync.RWMutex
@@ -58,15 +60,38 @@ func New(cfg *config.Config, deployEngine *deploy.Engine, tmpl *template.Templat
 		limiter = ratelimit.New(cfg.RateLimit.RequestsPerMinute, cfg.RateLimit.Burst)
 	}
 
+	// Initialize webhook handler.
+	wh := webhook.New(cfg, deployEngine)
+
+	// Initialize notifier and connect it to the webhook handler.
+	var ntf *notify.Notifier
+	if cfg.Notifications.AppriseURL != "" {
+		timeout := 10 * time.Second
+		ntf = notify.New(
+			cfg.Notifications.AppriseURL,
+			cfg.Notifications.TagSuccess,
+			cfg.Notifications.TagFailure,
+			cfg.Notifications.TagNoChanges,
+			timeout,
+		)
+		wh.SetNotifier(func(hookID string, result *deploy.DeployResult) {
+			// Notification is best-effort — errors are logged, not returned.
+			if err := ntf.SendDeployResult(context.Background(), result, hookID); err != nil {
+				slog.Warn("notification failed", "hook_id", hookID, "error", err)
+			}
+		})
+	}
+
 	s := &Server{
-		cfg:     cfg,
-		deploy:  deployEngine,
-		api:     api.New(cfg, deployEngine),
-		webhook: webhook.New(cfg, deployEngine),
-		limiter: limiter,
-		results: make(map[string]*deploy.DeployResult),
-		ctx:     ctx,
-		cancel:  cancel,
+		cfg:      cfg,
+		deploy:   deployEngine,
+		api:      api.New(cfg, deployEngine),
+		webhook:  wh,
+		notifier: ntf,
+		limiter:  limiter,
+		results:  make(map[string]*deploy.DeployResult),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
 	// Initialize UI renderer with parsed templates.
