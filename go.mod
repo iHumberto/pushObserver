@@ -1,6 +1,5 @@
 module forgejo.humbertof.dev/humberto/push-observer
 
 go 1.24
- forgejo/main
 
 require gopkg.in/yaml.v3 v3.0.1
