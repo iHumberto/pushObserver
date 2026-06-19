@@ -1,0 +1,16 @@
+# Binaries
+/push-observer
+/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (contains secrets)
+push-observer.yaml
