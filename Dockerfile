@@ -34,15 +34,16 @@ RUN apk add --no-cache --virtual .build-deps curl upx && \
     apk del .build-deps && \
     rm -rf /usr/share/man /usr/share/doc /usr/share/info /var/cache/apk/*
 
-# Create non-root user
-RUN adduser -D -h /home/webhook webhook
-USER webhook
-WORKDIR /home/webhook
-
-# Create directories for SSH keys, config, and repos
-RUN mkdir -p /home/webhook/.ssh /home/webhook/.config /home/webhook/repos \
+# Create non-root user and home directory structure
+# IMPORTANT: mkdir and chown run as ROOT so ownership is guaranteed correct.
+# If chown runs as USER webhook, it silently fails — only root can change ownership.
+RUN adduser -D -h /home/webhook webhook \
+    && mkdir -p /home/webhook/.ssh /home/webhook/.config /home/webhook/repos \
     && chmod 700 /home/webhook/.ssh \
     && chown -R webhook:webhook /home/webhook
+
+USER webhook
+WORKDIR /home/webhook
 
 # Bundle default config template — entrypoint copies it on first run
 COPY --chown=webhook:webhook push-observer.yaml /home/webhook/push-observer.yaml.default

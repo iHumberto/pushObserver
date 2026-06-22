@@ -11,10 +11,16 @@ DEFAULT="/home/webhook/push-observer.yaml.default"
 # Ensure config directory exists
 mkdir -p "$(dirname "$CONFIG")"
 
-# Ensure config directory is writable by webhook user
-# Defends against: (a) stale Docker layer cache with root-owned .config
-# (b) volume mounts from host with root ownership
-chown webhook:webhook "$(dirname "$CONFIG")" 2>/dev/null || true
+# Ensure config directory is writable by the webhook user.
+# chown doesn't work here (we run as non-root), so we detect and fail early
+# with a clear message instead of a cryptic "Permission denied".
+if [ ! -w "$(dirname "$CONFIG")" ]; then
+    echo "ERROR: $(dirname "$CONFIG") is not writable by $(whoami) (UID $(id -u))" >&2
+    echo "Fix: ensure the directory is owned by UID $(id -u), e.g.:" >&2
+    echo "  docker run --user root <image> chown -R $(id -u):$(id -g) $(dirname "$CONFIG")" >&2
+    echo "  or on host volume: chown -R $(id -u):$(id -g) /path/to/.config" >&2
+    exit 1
+fi
 
 if [ ! -f "$CONFIG" ]; then
     echo "==> No config found at $CONFIG"
