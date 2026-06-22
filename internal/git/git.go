@@ -89,6 +89,7 @@ func (g *GitEngine) sshCommand() string {
 // ───────────────── git execution ─────────────────
 
 // gitCmd builds an exec.Cmd with the engine's timeout context and SSH env.
+// #nosec G204 — args are validated by containsShellMeta() in public API methods (Clone, Pull, etc.) before reaching gitCmd.
 func (g *GitEngine) gitCmd(ctx context.Context, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = g.workDir
@@ -152,6 +153,7 @@ func (g *GitEngine) Clone(ctx context.Context, repoURL, branch string) error {
 	// git clone creates workDir automatically — run from parent.
 	parentDir := filepath.Dir(g.workDir)
 
+	// #nosec G204 — branch, repoURL and workDir are validated via containsShellMeta() before this point.
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = parentDir
 	if sshCmd := g.sshCommand(); sshCmd != "" {

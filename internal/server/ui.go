@@ -162,6 +162,7 @@ func triggerOptions(current string) template.HTML {
 		}
 		b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, o.value, sel, o.label))
 	}
+	// #nosec G203 — all option values and labels are hardcoded, not user-controlled
 	return template.HTML(b.String())
 }
 
@@ -199,7 +200,8 @@ func (ui *UIRenderer) generateCSRF(w http.ResponseWriter) string {
 		Name:     "csrf_token",
 		Value:    token,
 		Path:     "/",
-		HttpOnly: false, // must be readable by JS if used; but we read from form
+		Secure:   true,
+		HttpOnly: true, // server-side CSRF double-submit; cookie never read by JS
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   3600,
 	})
@@ -286,6 +288,10 @@ func (ui *UIRenderer) NewHookForm(w http.ResponseWriter, r *http.Request) {
 // HookDetail renders the services page for a specific hook.
 func (ui *UIRenderer) HookDetail(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
+	if !config.ValidHookID(hookID) {
+		http.Error(w, "invalid hook ID", http.StatusBadRequest)
+		return
+	}
 	hook := ui.findHook(hookID)
 	if hook == nil {
 		http.NotFound(w, r)
@@ -328,6 +334,10 @@ func (ui *UIRenderer) HookDetail(w http.ResponseWriter, r *http.Request) {
 // EditHookForm renders the edit hook page pre-filled with existing config.
 func (ui *UIRenderer) EditHookForm(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
+	if !config.ValidHookID(hookID) {
+		http.Error(w, "invalid hook ID", http.StatusBadRequest)
+		return
+	}
 	hook := ui.findHook(hookID)
 	if hook == nil {
 		http.NotFound(w, r)
@@ -393,6 +403,12 @@ func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
 		hook.ContentType = "json"
 	}
 
+	// Validate hook ID contains only safe characters (prevent open redirect and injection).
+	if !config.ValidHookID(hook.ID) {
+		ui.redirectError(w, r, "/hooks/new", "invalid hook ID: only alphanumeric, hyphens, underscores, and dots allowed")
+		return
+	}
+
 	// Use config's AddHook which handles persistence with rollback.
 	if err := ui.cfg.AddHook(hook); err != nil {
 		ui.redirectError(w, r, "/hooks/new", "failed to save: "+err.Error())
@@ -400,6 +416,7 @@ func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("hook created", "id", hook.ID)
+	// #nosec G710 — hook.ID is validated by config.ValidHookID above
 	http.Redirect(w, r, "/hooks/"+hook.ID+"?success=Hook+created", http.StatusSeeOther)
 }
 
@@ -408,6 +425,10 @@ func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
 // UpdateHook handles PUT /hooks/{id} — updates an existing hook from form data.
 func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
+	if !config.ValidHookID(hookID) {
+		http.Error(w, "invalid hook ID", http.StatusBadRequest)
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		ui.redirectError(w, r, "/hooks/"+hookID+"/edit", "failed to parse form")
 		return
@@ -447,6 +468,7 @@ func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("hook updated", "id", hookID)
+	// #nosec G710 — hookID validated at top of handler
 	http.Redirect(w, r, "/hooks/"+hookID+"?success=Hook+updated", http.StatusSeeOther)
 }
 
@@ -457,6 +479,10 @@ func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 // parse the form body for DELETE requests to extract the CSRF token.
 func (ui *UIRenderer) DeleteHook(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
+	if !config.ValidHookID(hookID) {
+		http.Error(w, "invalid hook ID", http.StatusBadRequest)
+		return
+	}
 
 	// Manually parse form body (ParseForm ignores body for DELETE).
 	bodyBytes, _ := io.ReadAll(r.Body)
@@ -488,6 +514,10 @@ func (ui *UIRenderer) DeleteHook(w http.ResponseWriter, r *http.Request) {
 // ScanServices handles POST /hooks/{id}/scan — rescans repo_dir for new services.
 func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
+	if !config.ValidHookID(hookID) {
+		http.Error(w, "invalid hook ID", http.StatusBadRequest)
+		return
+	}
 	hook := ui.findHook(hookID)
 	if hook == nil {
 		http.NotFound(w, r)
@@ -521,6 +551,7 @@ func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("services scanned", "id", hookID, "count", len(merged))
+	// #nosec G710 — hookID validated at top of handler
 	http.Redirect(w, r, "/hooks/"+hookID+"?success=Services+rescanned", http.StatusSeeOther)
 }
 
@@ -529,6 +560,10 @@ func (ui *UIRenderer) ScanServices(w http.ResponseWriter, r *http.Request) {
 // TriggerDeploy handles POST /hooks/{id}/trigger — manually triggers deploy.
 func (ui *UIRenderer) TriggerDeploy(w http.ResponseWriter, r *http.Request) {
 	hookID := r.PathValue("id")
+	if !config.ValidHookID(hookID) {
+		http.Error(w, "invalid hook ID", http.StatusBadRequest)
+		return
+	}
 	if ui.findHook(hookID) == nil {
 		http.NotFound(w, r)
 		return
@@ -538,12 +573,14 @@ func (ui *UIRenderer) TriggerDeploy(w http.ResponseWriter, r *http.Request) {
 	result, err := ui.server.deploy.Deploy(r.Context(), hookID)
 	if err != nil {
 		slog.Error("manual deploy failed", "hookID", hookID, "error", err)
+		// #nosec G710 — hookID validated at top of handler
 		http.Redirect(w, r, "/hooks/"+hookID+"?error=Deploy+failed: "+err.Error(), http.StatusSeeOther)
 		return
 	}
 
 	ui.server.setLastResult(hookID, result)
 	slog.Info("manual deploy complete", "hookID", hookID, "status", statusText(result))
+	// #nosec G710 — hookID validated at top of handler
 	http.Redirect(w, r, "/hooks/"+hookID+"?success=Deploy+complete", http.StatusSeeOther)
 }
 
@@ -626,6 +663,11 @@ func serviceStatusClass(svc deploy.DeployServiceResult) string {
 }
 
 // redirectError redirects with an error query parameter.
+// Path is sanitized to strip CR/LF (prevents header injection).
 func (ui *UIRenderer) redirectError(w http.ResponseWriter, r *http.Request, path, msg string) {
+	// Strip carriage-return and line-feed to prevent HTTP header injection.
+	path = strings.ReplaceAll(path, "\r", "")
+	path = strings.ReplaceAll(path, "\n", "")
+	// #nosec G710 — path sanitized above (CR/LF stripped); always internal callers
 	http.Redirect(w, r, path+"?error="+msg, http.StatusSeeOther)
 }

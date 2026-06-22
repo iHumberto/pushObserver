@@ -761,7 +761,7 @@ func TestHookNameXSSProtection(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusNotFound && rec.Code != http.StatusOK {
+	if rec.Code != http.StatusNotFound && rec.Code != http.StatusOK && rec.Code != http.StatusBadRequest {
 		t.Errorf("unexpected status: %d", rec.Code)
 	}
 	if rec.Code == http.StatusOK {

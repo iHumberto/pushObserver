@@ -7,6 +7,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -177,16 +178,37 @@ func Load(path string) (*Config, error) {
 		path = defaultConfigPath
 	}
 
-	data, err := os.ReadFile(path)
+	// Normalize the path to prevent traversal and determine scoped access root.
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolving config path: %w", err)
+	}
+	cleanPath := filepath.Clean(absPath)
+	rootDir := filepath.Dir(cleanPath)
+	fileName := filepath.Base(cleanPath)
+
+	root, err := os.OpenRoot(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("opening root directory %q: %w", rootDir, err)
+	}
+	defer root.Close()
+
+	f, err := root.Open(fileName)
 	if err != nil {
 		if os.IsNotExist(err) {
 			cfg := DefaultConfig()
-			if writeErr := writeDefault(path, cfg); writeErr != nil {
+			if writeErr := writeDefault(cleanPath, cfg); writeErr != nil {
 				return nil, fmt.Errorf("config file not found and could not create default: %w", writeErr)
 			}
 			return cfg, nil
 		}
-		return nil, fmt.Errorf("reading config file %q: %w", path, err)
+		return nil, fmt.Errorf("reading config file %q: %w", cleanPath, err)
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("reading config file %q: %w", cleanPath, err)
 	}
 
 	// Expand env vars in raw YAML before parsing.
@@ -210,7 +232,7 @@ func Load(path string) (*Config, error) {
 	// Apply defaults for missing optional fields.
 	cfg.applyDefaults()
 
-	cfg.configPath = path
+	cfg.configPath = cleanPath
 
 	return &cfg, nil
 }
@@ -405,7 +427,7 @@ func writeDefault(path string, cfg *Config) error {
 		"# Customize this file for your environment.\n" +
 		"# Secrets use ${ENV_VAR} or ${ENV_VAR:default} syntax.\n\n")
 	content := append(header, data...)
-	if err := os.WriteFile(path, content, 0o640); err != nil {
+	if err := os.WriteFile(path, content, 0o600); err != nil {
 		return fmt.Errorf("writing default config to %q: %w", path, err)
 	}
 	return nil
@@ -555,4 +577,16 @@ func ScanServices(repoDir string) []ServiceConfig {
 func hasCompose(dir string) bool {
 	fi, err := os.Stat(filepath.Join(dir, dockerComposeFile))
 	return err == nil && !fi.IsDir()
+}
+
+// ──────────────────── Hook ID Validation ─────────────────────────────────
+
+// hookIDPattern defines the allowed character set for hook IDs.
+// Only alphanumeric, hyphens, underscores, and dots are permitted.
+var hookIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+
+// ValidHookID returns true if the hook ID contains only safe characters.
+// This prevents open redirect, path traversal, and header injection via hook IDs.
+func ValidHookID(id string) bool {
+	return id != "" && hookIDPattern.MatchString(id)
 }

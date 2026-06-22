@@ -3,7 +3,7 @@ package webhook
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 — SHA1 HMAC intentionally supported for legacy services (older GitLab/Gitea).
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
