@@ -187,6 +187,16 @@ func TestLoad_MissingFile_CreatesDefault(t *testing.T) {
 	if _, err := os.Stat(cfgPath); err != nil {
 		t.Errorf("default config file was not created: %v", err)
 	}
+
+	// Save() must work after Load creates default from missing file.
+	// This verifies configPath is set (otherwise Save fails with
+	// "config was not loaded from a file").
+	cfg.Hooks = append(cfg.Hooks, HookConfig{
+		ID: "test", RepoURL: "git@x", RepoDir: "/tmp",
+	})
+	if err := cfg.Save(); err != nil {
+		t.Errorf("Save after default config creation failed: %v", err)
+	}
 }
 
 func TestLoad_EnvSubstitution(t *testing.T) {

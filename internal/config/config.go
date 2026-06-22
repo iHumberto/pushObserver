@@ -196,6 +196,7 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			cfg := DefaultConfig()
+			cfg.configPath = cleanPath
 			if writeErr := writeDefault(cleanPath, cfg); writeErr != nil {
 				return nil, fmt.Errorf("config file not found and could not create default: %w", writeErr)
 			}
@@ -418,7 +419,13 @@ func writeDefault(path string, cfg *Config) error {
 	}
 	header := []byte("# pushObserver default configuration — auto-generated on first run\n" +
 		"# Customize this file for your environment.\n" +
-		"# Secrets use ${ENV_VAR} or ${ENV_VAR:default} syntax.\n\n")
+		"# Secrets use ${ENV_VAR} or ${ENV_VAR:default} syntax.\n" +
+		"#\n" +
+		"# Environment variables:\n" +
+		"#   SERVER_TLS=false        — set to \"true\" if behind HTTPS reverse proxy\n" +
+		"#   PUSH_OBSERVER_CONFIG    — alternative config file path\n" +
+		"#   PUSH_OBSERVER_LOG_LEVEL — debug, info (default), warn, error\n" +
+		"\n")
 	content := append(header, data...)
 	if err := os.WriteFile(path, content, 0o600); err != nil {
 		return fmt.Errorf("writing default config to %q: %w", path, err)

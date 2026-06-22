@@ -199,6 +199,8 @@ func (ui *UIRenderer) generateCSRF(w http.ResponseWriter) string {
 	key := "session"
 	ui.csrf[key] = token
 	// Set cookie for double-submit verification.
+	// #nosec G124 — Secure: ui.tlsEnabled (configurable via SERVER_TLS env var).
+	// Defaults to false for homelab HTTP; set SERVER_TLS=true for HTTPS reverse proxy.
 	http.SetCookie(w, &http.Cookie{
 		Name:     "csrf_token",
 		Value:    token,
