@@ -141,21 +141,22 @@ Pronto. O pushObserver agora está escutando na porta 9090.
 
 Pegue a URL da sua instância do pushObserver e adicione o hook na sua plataforma:
 
-- **GitHub**: Repo → Settings → Webhooks → Add webhook
-  - Payload URL: `http://seu-servidor:9090/hook/myapp`
-  - Content type: `application/json`
-  - Secret: mesmo valor de `HMAC_SECRET_MYAPP`
-
 - **Forgejo / Gitea**: Repo → Settings → Webhooks → Add Webhook
   - Target URL: `http://seu-servidor:9090/hook/myapp`
   - HTTP Method: `POST`
   - Secret: mesmo valor de `HMAC_SECRET_MYAPP`
 
-- **GitLab**: Repo → Settings → Webhooks
+- **GitLab** (self-hosted): Repo → Settings → Webhooks
   - URL: `http://seu-servidor:9090/hook/myapp`
   - Trigger: Push events
   - Secret token: mesmo valor de `HMAC_SECRET_MYAPP`
   - Tipo HMAC na config: `token` (GitLab usa comparação de token simples)
+
+- **GitHub / GitLab.com**: Estas plataformas exigem uma **URL pública com HTTPS**. Você tem duas opções:
+  - Use um proxy reverso com domínio (nginx + Let's Encrypt, Caddy, Traefik)
+  - Use um túnel: `ngrok http 9090`, depois use a URL `https://xxxx.ngrok.io/hook/myapp`
+  - Content type: `application/json`
+  - Secret: mesmo valor de `HMAC_SECRET_MYAPP`
 
 ### 6. Faça push e veja o deploy
 
