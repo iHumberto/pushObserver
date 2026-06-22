@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Eye (observer) -->
+  <ellipse cx="32" cy="28" rx="14" ry="10" stroke="#60a5fa" stroke-width="3" fill="none"/>
+  <circle cx="32" cy="28" r="4" fill="#60a5fa"/>
+  <!-- Git branch (push) -->
+  <circle cx="18" cy="52" r="4" stroke="#f59e0b" stroke-width="2.5" fill="none"/>
+  <circle cx="46" cy="42" r="4" stroke="#f59e0b" stroke-width="2.5" fill="none"/>
+  <circle cx="38" cy="52" r="4" stroke="#f59e0b" stroke-width="2.5" fill="none"/>
+  <line x1="18" y1="48" x2="18" y2="38" stroke="#f59e0b" stroke-width="2"/>
+  <line x1="18" y1="38" x2="42" y2="38" stroke="#f59e0b" stroke-width="2"/>
+  <line x1="42" y1="38" x2="46" y2="42" stroke="#f59e0b" stroke-width="2"/>
+  <line x1="18" y1="38" x2="34" y2="38" stroke="#f59e0b" stroke-width="2"/>
+  <line x1="34" y1="38" x2="38" y2="48" stroke="#f59e0b" stroke-width="2"/>
+  <line x1="38" y1="48" x2="38" y2="52" stroke="#f59e0b" stroke-width="2"/>
+  <!-- Arrow up (push direction) -->
+  <path d="M50 28 L56 20 L62 28" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <line x1="56" y1="20" x2="56" y2="38" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

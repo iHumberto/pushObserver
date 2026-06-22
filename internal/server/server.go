@@ -176,6 +176,9 @@ func (s *Server) routes() http.Handler {
 	// ── REST API (delegated to api.Handler, JSON) ──
 	s.api.RegisterRoutes(mux)
 
+	// ── Static assets ──
+	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+
 	// ── Health ──
 	mux.HandleFunc("GET /health", s.handleHealth)
 

@@ -2,6 +2,12 @@
 
 **Push on git → deploy on server in 1 minute. Zero scripts.**
 
+[![tests](https://github.com/iHumberto/pushObserver/actions/workflows/ci.yaml/badge.svg)](https://github.com/iHumberto/pushObserver/actions/workflows/ci.yaml)
+[![Maintenance](https://img.shields.io/maintenance/yes/2026.svg)](https://github.com/iHumberto/pushObserver)
+[![License: GPL v3](https://img.shields.io/badge/License-GNU_GPL_v3-brightgreen?style=flat&amp;logo=gnuprivacyguard)](https://www.gnu.org/licenses/gpl-3.0)
+
+🇧🇷 **Leia em português:** [README.pt-BR.md](README.pt-BR.md)
+
 pushObserver is a webhook receiver that does one thing well: it watches your Git
 repos and runs `docker compose up` when you push. No shell scripts, no YAML
 pipelines, no Kubernetes — just a single Go binary that speaks Git and Docker.
@@ -24,26 +30,24 @@ git push → webhook POST → pushObserver → git pull → docker compose up �
 
 ### Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│                  pushObserver                     │
-│                                                   │
-│  ┌──────────┐   ┌──────────┐   ┌──────────────┐ │
-│  │  Server   │──▶│ Webhook   │──▶│   Deploy     │ │
-│  │  (HTTP)   │   │ Handler   │   │   Engine     │ │
-│  └──────────┘   └──────────┘   └──────┬───────┘ │
-│       │                │               │         │
-│       ▼                ▼               ▼         │
-│  ┌──────────┐   ┌──────────┐   ┌──────────────┐ │
-│  │  Rate    │   │   HMAC    │   │  Git    Docker│ │
-│  │ Limiter  │   │ Validator │   │ Engine  Engine│ │
-│  └──────────┘   └──────────┘   └──────────────┘ │
-│                                       │          │
-│  ┌──────────┐                        │          │
-│  │  Notify  │◀───────────────────────┘          │
-│  │ (Apprise)│                                    │
-│  └──────────┘                                    │
-└─────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph pushObserver["pushObserver"]
+        direction TB
+        Server["Server (HTTP)"]
+        Webhook["Webhook Handler"]
+        Deploy["Deploy Engine"]
+        Rate["Rate Limiter"]
+        HMAC["HMAC Validator"]
+        GitDocker["Git Engine<br/>Docker Engine"]
+        Notify["Notify (Apprise)"]
+
+        Server --> Webhook --> Deploy
+        Server -.-> Rate
+        Webhook -.-> HMAC
+        Deploy -.-> GitDocker
+        GitDocker --> Notify
+    end
 ```
 
 The deploy engine is smart about restarts. Each service can use one of three
@@ -425,4 +429,4 @@ Works on any Linux host — tested on Raspberry Pi 4B (arm64) and x86_64.
 
 GNU General Public License v3.0. See [LICENSE](LICENSE).
 
-Copyright (C) 2026 Humberto Freitas.
+Copyright (C) 2026 Humberto Faria.
