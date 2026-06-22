@@ -503,8 +503,10 @@ func TestTriggerDeploy_InvalidID(t *testing.T) {
 	// or 405 (method not allowed). Either way, the bad ID is rejected.
 	w := doRequest(t, h, "POST", "/api/hooks/../escape/trigger", nil)
 
-	if w.Code != http.StatusBadRequest && w.Code != http.StatusTemporaryRedirect && w.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("expected rejection (400/307/405), got %d", w.Code)
+	// Go 1.22+ ServeMux uses 301 (MovedPermanently) for path cleaning redirects
+	// instead of 307 (TemporaryRedirect) from older versions.
+	if w.Code != http.StatusBadRequest && w.Code != http.StatusTemporaryRedirect && w.Code != http.StatusMovedPermanently && w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected rejection (400/301/307/405), got %d", w.Code)
 	}
 }
 
