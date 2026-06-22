@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -20,10 +21,11 @@ import (
 
 // UIRenderer handles server-side HTML rendering for all dashboard pages.
 type UIRenderer struct {
-	tmpl    *template.Template
-	cfg     *config.Config
-	server  *Server
-	csrf    map[string]string // session → token (simple CSRF for homelab use)
+	tmpl       *template.Template
+	cfg        *config.Config
+	server     *Server
+	csrf       map[string]string // session → token (simple CSRF for homelab use)
+	tlsEnabled bool              // set via SERVER_TLS env var; controls CSRF cookie Secure flag
 }
 
 // PageData is the base template data passed to every page.
@@ -56,10 +58,11 @@ type ServiceView struct {
 // NewUIRenderer creates a UIRenderer with parsed templates and registered funcs.
 func NewUIRenderer(tmpl *template.Template, cfg *config.Config, server *Server) *UIRenderer {
 	ui := &UIRenderer{
-		tmpl:   tmpl,
-		cfg:    cfg,
-		server: server,
-		csrf:   make(map[string]string),
+		tmpl:       tmpl,
+		cfg:        cfg,
+		server:     server,
+		csrf:       make(map[string]string),
+		tlsEnabled: os.Getenv("SERVER_TLS") == "true",
 	}
 	return ui
 }
@@ -200,7 +203,7 @@ func (ui *UIRenderer) generateCSRF(w http.ResponseWriter) string {
 		Name:     "csrf_token",
 		Value:    token,
 		Path:     "/",
-		Secure:   true,
+		Secure:   ui.tlsEnabled,
 		HttpOnly: true, // server-side CSRF double-submit; cookie never read by JS
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   3600,

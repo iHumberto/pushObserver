@@ -31,6 +31,7 @@ services:
       # Deploy key for private repos (optional — create key first)
       - ${HOME}/.ssh/push_observer_deploy_key:/home/webhook/.ssh/deploy_key:ro
     environment:
+      - SERVER_TLS=${SERVER_TLS:-false}
       - PUSH_OBSERVER_API_KEY=${PUSH_OBSERVER_API_KEY:-}
       - HMAC_SECRET_HOMELAB=${HMAC_SECRET_HOMELAB:-}
     networks:

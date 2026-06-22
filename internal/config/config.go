@@ -7,7 +7,6 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -178,22 +177,22 @@ func Load(path string) (*Config, error) {
 		path = defaultConfigPath
 	}
 
-	// Normalize the path to prevent traversal and determine scoped access root.
+	// Normalize the path to prevent traversal.
+	// The config path is always from workdir (fixed), not external input.
+	// We use filepath.Clean + explicit ".." check instead of os.Root (Go 1.24).
+	// Rationale: os.Root is the canonical Go 1.24 approach for path scoping
+	// with external input; here the path is fixed, so filepath.Clean suffices.
+	// If the path ever comes from external input, migrate to os.Root.
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, fmt.Errorf("resolving config path: %w", err)
 	}
 	cleanPath := filepath.Clean(absPath)
-	rootDir := filepath.Dir(cleanPath)
-	fileName := filepath.Base(cleanPath)
-
-	root, err := os.OpenRoot(rootDir)
-	if err != nil {
-		return nil, fmt.Errorf("opening root directory %q: %w", rootDir, err)
+	if strings.Contains(cleanPath, "..") {
+		return nil, fmt.Errorf("invalid config path: %q", path)
 	}
-	defer root.Close()
 
-	f, err := root.Open(fileName)
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			cfg := DefaultConfig()
@@ -202,12 +201,6 @@ func Load(path string) (*Config, error) {
 			}
 			return cfg, nil
 		}
-		return nil, fmt.Errorf("reading config file %q: %w", cleanPath, err)
-	}
-	defer f.Close()
-
-	data, err := io.ReadAll(f)
-	if err != nil {
 		return nil, fmt.Errorf("reading config file %q: %w", cleanPath, err)
 	}
 
