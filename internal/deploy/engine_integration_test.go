@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
+	"github.com/HumbertoF28/push-observer/internal/config"
 )
 
 // ──────────────── Full Deploy Pipeline Integration Tests ─────────────────

@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/docker"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/git"
+	"github.com/HumbertoF28/push-observer/internal/config"
+	"github.com/HumbertoF28/push-observer/internal/docker"
+	"github.com/HumbertoF28/push-observer/internal/git"
 )
 
 // ─────────────────────────────── Types ──────────────────────────────────

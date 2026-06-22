@@ -1,4 +1,4 @@
-module forgejo.humbertof.dev/humberto/push-observer
+module github.com/HumbertoF28/push-observer
 
 go 1.24
 

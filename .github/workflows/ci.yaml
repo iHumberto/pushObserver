@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ["1.23", "1.24"]
+        go-version: ["1.24"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
       - name: Build
         run: CGO_ENABLED=0 GOARCH=${{ matrix.goarch }} go build -ldflags="-s -w" -o push-observer-${{ matrix.goarch }} ./cmd/push-observer

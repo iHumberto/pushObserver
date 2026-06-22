@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"strings"
 
-	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/deploy"
+	"github.com/HumbertoF28/push-observer/internal/config"
+	"github.com/HumbertoF28/push-observer/internal/deploy"
 )
 
 // Handler serves POST /hook/{id} with HMAC validation and deploy triggering.

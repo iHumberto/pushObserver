@@ -20,12 +20,12 @@ import (
 	"syscall"
 	"time"
 
-	"forgejo.humbertof.dev/humberto/push-observer/internal/api"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/config"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/deploy"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/notify"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/ratelimit"
-	"forgejo.humbertof.dev/humberto/push-observer/internal/webhook"
+	"github.com/HumbertoF28/push-observer/internal/api"
+	"github.com/HumbertoF28/push-observer/internal/config"
+	"github.com/HumbertoF28/push-observer/internal/deploy"
+	"github.com/HumbertoF28/push-observer/internal/notify"
+	"github.com/HumbertoF28/push-observer/internal/ratelimit"
+	"github.com/HumbertoF28/push-observer/internal/webhook"
 )
 
 // ─────────────────────────────── Types ──────────────────────────────────
