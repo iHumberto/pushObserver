@@ -109,7 +109,7 @@ func TestSha256Hex_OutputIsHex(t *testing.T) {
 	}
 	// Verify it's valid lowercase hex
 	for _, c := range got {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("non-hex character in output: %c", c)
 		}
 	}
@@ -156,7 +156,7 @@ func TestSha1Hex_OutputIsHex(t *testing.T) {
 		t.Errorf("expected 40 characters (SHA1), got %d", len(got))
 	}
 	for _, c := range got {
-		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
 			t.Errorf("non-hex character in output: %c", c)
 		}
 	}

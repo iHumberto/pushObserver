@@ -88,7 +88,7 @@ func (n *Notifier) Send(ctx context.Context, title, body, tag, format string) er
 	if err != nil {
 		return fmt.Errorf("notify: send to apprise: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("notify: apprise returned status %d", resp.StatusCode)
@@ -165,11 +165,11 @@ func (n *Notifier) SendDeployResult(ctx context.Context, result *deploy.DeployRe
 	for _, svc := range result.Services {
 		switch {
 		case svc.Restarted:
-			details.WriteString(fmt.Sprintf("- **%s**: restarted ✅\n", svc.Name))
+			fmt.Fprintf(&details, "- **%s**: restarted ✅\n", svc.Name)
 		case svc.Error != nil:
-			details.WriteString(fmt.Sprintf("- **%s**: failed ❌ (%s)\n", svc.Name, svc.Error))
+			fmt.Fprintf(&details, "- **%s**: failed ❌ (%s)\n", svc.Name, svc.Error)
 		case svc.Changed:
-			details.WriteString(fmt.Sprintf("- **%s**: build/restart triggered but failed ⚠️\n", svc.Name))
+			fmt.Fprintf(&details, "- **%s**: build/restart triggered but failed ⚠️\n", svc.Name)
 		default:
 			details.WriteString(fmt.Sprintf("- **%s**: no changes\n", svc.Name))
 		}

@@ -14,8 +14,8 @@ import (
 // ──────────────────────── Env var substitution tests ─────────────────────
 
 func TestExpandEnv_Simple(t *testing.T) {
-	os.Setenv("TEST_VAR", "hello")
-	defer os.Unsetenv("TEST_VAR")
+	_ = os.Setenv("TEST_VAR", "hello")
+	defer func() { _ = os.Unsetenv("TEST_VAR") }()
 
 	result := expandEnv([]byte("prefix ${TEST_VAR} suffix"))
 	if string(result) != "prefix hello suffix" {
@@ -38,8 +38,8 @@ func TestExpandEnv_MissingWithDefault(t *testing.T) {
 }
 
 func TestExpandEnv_ExistingWithDefault(t *testing.T) {
-	os.Setenv("PRESENT", "real")
-	defer os.Unsetenv("PRESENT")
+	_ = os.Setenv("PRESENT", "real")
+	defer func() { _ = os.Unsetenv("PRESENT") }()
 
 	result := expandEnv([]byte("${PRESENT:ignored}"))
 	if string(result) != "real" {
@@ -48,10 +48,10 @@ func TestExpandEnv_ExistingWithDefault(t *testing.T) {
 }
 
 func TestExpandEnv_MultipleVars(t *testing.T) {
-	os.Setenv("A", "1")
-	os.Setenv("B", "2")
-	defer os.Unsetenv("A")
-	defer os.Unsetenv("B")
+	_ = os.Setenv("A", "1")
+	_ = os.Setenv("B", "2")
+	defer func() { _ = os.Unsetenv("A") }()
+	defer func() { _ = os.Unsetenv("B") }()
 
 	result := expandEnv([]byte("${A}:${B}:${C:nope}"))
 	if string(result) != "1:2:nope" {
@@ -134,9 +134,9 @@ logging:
   level: "info"
   format: "json"
 `)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	os.Setenv("HMAC_SECRET", "testsecret")
+	_ = os.Setenv("HMAC_SECRET", "testsecret")
 	defer os.Unsetenv("HMAC_SECRET")
 
 	cfg, err := Load(filepath.Join(tmpDir, "push-observer.yaml"))
@@ -225,7 +225,7 @@ logging:
   level: info
   format: json
 `)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg, err := Load(filepath.Join(tmpDir, "push-observer.yaml"))
 	if err != nil {
@@ -261,7 +261,7 @@ logging:
   level: info
   format: json
 `)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg, err := Load(filepath.Join(tmpDir, "push-observer.yaml"))
 	if err != nil {
