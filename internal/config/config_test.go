@@ -709,7 +709,7 @@ func TestScanServices_SymlinkOutsideRepo(t *testing.T) {
 	if err := os.Symlink("/etc", filepath.Join(tmpDir, "escape")); err != nil {
 		t.Fatal(err)
 	}
-	_ = os.MkdirAll(filepath.Join(tmpDir, "escape"), 0o755) // expected to fail — escape is a symlink, not a dir
+	_ = os.MkdirAll(filepath.Join(tmpDir, "escape"), 0o755) // intentionally fails — escape is a symlink, not a dir
 
 	// Actually, os.Symlink creates a symlink; os.MkdirAll fails if target
 	// exists. Let's test that ScanServices handles the case gracefully.

@@ -129,7 +129,7 @@ func TestHealthEndpoint(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), `"status":"ok"`) {
 		t.Errorf("body does not contain status:ok: %s", rec.Body.String())
@@ -147,7 +147,7 @@ func TestDashboardPage(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	ct := rec.Header().Get("Content-Type")
 	if !strings.Contains(ct, "text/html") {
@@ -164,7 +164,7 @@ func TestDashboardNotFoundSubPath(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rec.Code)
+		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
 
@@ -179,7 +179,7 @@ func TestNewHookForm(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 
@@ -194,7 +194,7 @@ func TestHookDetail(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 
@@ -207,7 +207,7 @@ func TestHookDetailNotFound(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rec.Code)
+		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
 
@@ -222,7 +222,7 @@ func TestEditHookForm(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 
@@ -235,7 +235,7 @@ func TestEditHookFormNotFound(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rec.Code)
+		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
 
@@ -269,7 +269,7 @@ func TestCreateHook_Success(t *testing.T) {
 
 	// Should redirect (303) to the new hook page.
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
 	}
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "/hooks/testhook") {
@@ -306,7 +306,7 @@ func TestCreateHook_MissingFields(t *testing.T) {
 	s.routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303", rec.Code)
+		t.Fatalf("status = %d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "error=") {
@@ -324,7 +324,7 @@ func TestCreateHook_NoCSRF(t *testing.T) {
 
 	// Should redirect with error since no CSRF.
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303", rec.Code)
+		t.Fatalf("status = %d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "error=") {
@@ -356,7 +356,7 @@ func TestCreateHook_DuplicateID(t *testing.T) {
 	s.routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303", rec.Code)
+		t.Fatalf("status = %d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "error=") {
@@ -390,7 +390,7 @@ func TestUpdateHook(t *testing.T) {
 	s.routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
 	}
 
 	hook := s.ui.findHook("homelab")
@@ -430,7 +430,7 @@ func TestDeleteHook(t *testing.T) {
 	s.routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
 	}
 
 	if s.ui.findHook("homelab") != nil {
@@ -463,7 +463,7 @@ func TestScanServices(t *testing.T) {
 	s.routes().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303", rec.Code)
+		t.Fatalf("status = %d, want 303", rec.Code)
 	}
 }
 
@@ -494,7 +494,7 @@ func TestTriggerDeploy(t *testing.T) {
 	// Trigger may fail if the repo doesn't exist on disk, but it should
 	// still redirect (not 500).
 	if rec.Code != http.StatusSeeOther {
-		t.Errorf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 303 (body: %s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -549,7 +549,7 @@ func TestRateLimiting_Enabled(t *testing.T) {
 	rec1 := httptest.NewRecorder()
 	handler.ServeHTTP(rec1, req1)
 	if rec1.Code != http.StatusOK {
-		t.Errorf("request 1: status = %d, want 200", rec1.Code)
+		t.Fatalf("request 1: status = %d, want 200", rec1.Code)
 	}
 
 	// Second request from same IP should be rate limited (burst=1).
@@ -558,7 +558,7 @@ func TestRateLimiting_Enabled(t *testing.T) {
 	rec2 := httptest.NewRecorder()
 	handler.ServeHTTP(rec2, req2)
 	if rec2.Code != http.StatusTooManyRequests {
-		t.Errorf("request 2: status = %d, want 429 (rate limited)", rec2.Code)
+		t.Fatalf("request 2: status = %d, want 429 (rate limited)", rec2.Code)
 	}
 }
 
@@ -575,7 +575,7 @@ func TestRateLimiting_Disabled(t *testing.T) {
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
-			t.Errorf("request %d: status = %d, want 200", i, rec.Code)
+			t.Fatalf("request %d: status = %d, want 200", i, rec.Code)
 		}
 	}
 }
@@ -762,7 +762,7 @@ func TestHookNameXSSProtection(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusNotFound && rec.Code != http.StatusOK && rec.Code != http.StatusBadRequest {
-		t.Errorf("unexpected status: %d", rec.Code)
+		t.Fatalf("unexpected status: %d", rec.Code)
 	}
 	if rec.Code == http.StatusOK {
 		if strings.Contains(rec.Body.String(), `<script>alert`) {
@@ -792,7 +792,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d, want 500", rec.Code)
+		t.Fatalf("status = %d, want 500", rec.Code)
 	}
 }
 
