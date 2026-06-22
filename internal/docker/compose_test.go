@@ -24,24 +24,24 @@ func setupTempDir(t *testing.T, composeContent string, subdirs ...string) (strin
 
 	composePath := filepath.Join(dir, "docker-compose.yaml")
 	if err := os.WriteFile(composePath, []byte(composeContent), 0o644); err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		t.Fatalf("WriteFile: %v", err)
 	}
 
 	for _, sd := range subdirs {
 		subPath := filepath.Join(dir, sd)
 		if err := os.MkdirAll(subPath, 0o755); err != nil {
-			os.RemoveAll(dir)
+			_ = os.RemoveAll(dir)
 			t.Fatalf("Mkdir subdir %q: %v", sd, err)
 		}
 		subCompose := filepath.Join(subPath, "docker-compose.yaml")
 		if err := os.WriteFile(subCompose, []byte("services:\n  app:\n    image: alpine\n"), 0o644); err != nil {
-			os.RemoveAll(dir)
+			_ = os.RemoveAll(dir)
 			t.Fatalf("WriteFile sub: %v", err)
 		}
 	}
 
-	cleanup := func() { os.RemoveAll(dir) }
+	cleanup := func() { _ = os.RemoveAll(dir) }
 	return dir, cleanup
 }
 

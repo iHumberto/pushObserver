@@ -70,6 +70,17 @@ triggers:
 The binary is static, under 15 MB, and has exactly one external dependency
 (`gopkg.in/yaml.v3`). Everything else is Go standard library.
 
+## First Run (Zero-Config)
+
+pushObserver is designed to work out of the box with zero configuration:
+
+1. **Start the container** — no config file needed
+2. **Auto-generated config** — `push-observer.yaml` is created with safe defaults on first run
+3. **Access the dashboard** — open `http://localhost:9090` and create your first hook via the WebUI
+4. **No hooks?** — the dashboard shows "No hooks configured. Create your first hook." when empty
+
+If you already have a `push-observer.yaml`, place it in the `./config/` directory before starting.
+
 ## Quick Start
 
 ### 1. Create your config file
@@ -285,9 +296,61 @@ The full config lives in `push-observer.yaml`. Key sections:
 | `notifications` | Apprise URL and notification tags |
 | `rate_limit` | Global rate limiting (requests per minute, burst) |
 | `logging` | Log level, format (JSON or text), output |
+| `environment` | Runtime behaviour via env vars (SERVER_TLS, PUSH_OBSERVER_API_KEY) |
 
 Secrets use `${ENV_VAR}` syntax — never put passwords or tokens directly in the
 YAML file.
+
+### Environment Variables
+
+pushObserver uses these environment variables for runtime configuration:
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `SERVER_TLS` | `false` | When `true`, the CSRF cookie gets the `Secure` flag — required when pushObserver sits behind an HTTPS reverse proxy (nginx, Traefik, Caddy) |
+| `PUSH_OBSERVER_CONFIG` | `push-observer.yaml` | Alternative path to the configuration file |
+| `PUSH_OBSERVER_LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `PUSH_OBSERVER_API_KEY` | (empty) | Optional password for the dashboard and management API endpoints |
+| `HMAC_SECRET_*` | (empty) | Per-hook HMAC secrets — set via `${HMAC_SECRET_MYAPP}` in your config |
+
+#### SERVER_TLS in detail
+
+By default, pushObserver runs on HTTP (port 9090) with no TLS. This is perfect for
+homelab deployments where the container is accessed directly or through a local
+reverse proxy that handles HTTPS termination.
+
+When you put pushObserver behind an HTTPS reverse proxy (e.g., `https://deploy.example.com`),
+the CSRF cookie must carry the `Secure` flag so browsers only send it over HTTPS.
+Set `SERVER_TLS=true` to enable this:
+
+```yaml
+# docker-compose.yaml
+services:
+  push-observer:
+    environment:
+      - SERVER_TLS=true
+```
+
+Or pass it through your `.env` file:
+
+```bash
+# .env
+SERVER_TLS=true
+```
+
+```yaml
+# docker-compose.yaml
+services:
+  push-observer:
+    environment:
+      - SERVER_TLS=${SERVER_TLS:-false}
+```
+
+> **📘 CSRF (Cross-Site Request Forgery):** A type of attack where a malicious site
+> tricks your browser into performing actions on pushObserver. The CSRF cookie
+> protects against this by requiring a matching token on every form submission.
+> The `Secure` flag tells browsers to only send this cookie over encrypted HTTPS
+> connections, preventing it from leaking on plain HTTP.
 
 ## Troubleshooting
 

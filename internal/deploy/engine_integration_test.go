@@ -55,8 +55,8 @@ func setupIntegrationRepo(t *testing.T) (repoDir, remoteDir string, cleanup func
 	runGit(t, repoDir, "push", "origin", "main")
 
 	cleanup = func() {
-		os.RemoveAll(repoDir)
-		os.RemoveAll(remoteDir)
+		_ = os.RemoveAll(repoDir)
+		_ = os.RemoveAll(remoteDir)
 	}
 	return repoDir, remoteDir, cleanup
 }

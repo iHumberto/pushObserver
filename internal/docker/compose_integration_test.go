@@ -179,7 +179,7 @@ func setupIntegrationCompose(t *testing.T, image string) (string, func()) {
 
 	composePath := filepath.Join(dir, "docker-compose.yaml")
 	if err := os.WriteFile(composePath, []byte(composeContent), 0o644); err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		t.Fatalf("WriteFile: %v", err)
 	}
 
@@ -188,7 +188,7 @@ func setupIntegrationCompose(t *testing.T, image string) (string, func()) {
 		cmd := exec.Command("docker", "compose", "-f", composePath, "down", "--timeout", "1")
 		cmd.Dir = dir
 		cmd.Run() // ignore errors during cleanup
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 	}
 	return dir, cleanup
 }
@@ -207,7 +207,7 @@ func setupIntegrationComposeWithBuild(t *testing.T) (string, func()) {
 CMD ["sleep", "10"]
 `
 	if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte(dockerfile), 0o644); err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		t.Fatalf("WriteFile Dockerfile: %v", err)
 	}
 
@@ -218,7 +218,7 @@ CMD ["sleep", "10"]
 `
 	composePath := filepath.Join(dir, "docker-compose.yaml")
 	if err := os.WriteFile(composePath, []byte(composeContent), 0o644); err != nil {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 		t.Fatalf("WriteFile compose: %v", err)
 	}
 
@@ -226,7 +226,7 @@ CMD ["sleep", "10"]
 		cmd := exec.Command("docker", "compose", "-f", composePath, "down", "--timeout", "1")
 		cmd.Dir = dir
 		cmd.Run()
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 	}
 	return dir, cleanup
 }

@@ -40,7 +40,7 @@ func TestShouldRestart_Default_NoFiles(t *testing.T) {
 
 func TestShouldRestart_Default_TriggerFileEnv(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "web",
@@ -56,7 +56,7 @@ func TestShouldRestart_Default_TriggerFileEnv(t *testing.T) {
 
 func TestShouldRestart_Default_TriggerFileDockerfile(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "web",
@@ -72,7 +72,7 @@ func TestShouldRestart_Default_TriggerFileDockerfile(t *testing.T) {
 
 func TestShouldRestart_Default_TriggerFileComposeYAML(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "web",
@@ -88,7 +88,7 @@ func TestShouldRestart_Default_TriggerFileComposeYAML(t *testing.T) {
 
 func TestShouldRestart_Default_TriggerFileComposeYML(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "web",
@@ -104,7 +104,7 @@ func TestShouldRestart_Default_TriggerFileComposeYML(t *testing.T) {
 
 func TestShouldRestart_Default_NonTriggerFile(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "web",
@@ -120,7 +120,7 @@ func TestShouldRestart_Default_NonTriggerFile(t *testing.T) {
 
 func TestShouldRestart_Default_FileOutsideServicePath(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "web",
@@ -136,7 +136,7 @@ func TestShouldRestart_Default_FileOutsideServicePath(t *testing.T) {
 
 func TestShouldRestart_OnChange_CustomExtensionMatch(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",
@@ -154,7 +154,7 @@ func TestShouldRestart_OnChange_CustomExtensionMatch(t *testing.T) {
 
 func TestShouldRestart_OnChange_CustomExtensionNoMatch(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",
@@ -172,7 +172,7 @@ func TestShouldRestart_OnChange_CustomExtensionNoMatch(t *testing.T) {
 
 func TestShouldRestart_OnChange_TriggerFileStillWorks(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",
@@ -190,7 +190,7 @@ func TestShouldRestart_OnChange_TriggerFileStillWorks(t *testing.T) {
 
 func TestShouldRestart_OnChange_EnvStillWorks(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",
@@ -206,7 +206,7 @@ func TestShouldRestart_OnChange_EnvStillWorks(t *testing.T) {
 
 func TestShouldRestart_UnknownTrigger_BehavesLikeDefault(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "svc",
@@ -228,7 +228,7 @@ func TestShouldRestart_UnknownTrigger_BehavesLikeDefault(t *testing.T) {
 
 func TestShouldRestart_DotPath(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "root",
@@ -244,7 +244,7 @@ func TestShouldRestart_DotPath(t *testing.T) {
 
 func TestShouldRestart_EmptyExtensions(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",
@@ -261,7 +261,7 @@ func TestShouldRestart_EmptyExtensions(t *testing.T) {
 
 func TestShouldRestart_DeeplyNestedFile(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",
@@ -404,7 +404,7 @@ func runGitCmd(t *testing.T, dir string, args ...string) string {
 func TestDeploy_FirstDeploy_AlwaysServices(t *testing.T) {
 	repoDir, remoteDir := createTempGitRepo(t)
 	_ = remoteDir
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	// Create target dir for clone
 	targetDir := t.TempDir()
@@ -586,7 +586,7 @@ func TestSecurity_CommandInjection_HookID(t *testing.T) {
 
 func TestSecurity_PathTraversal_ServicePath(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "evil",
@@ -603,7 +603,7 @@ func TestSecurity_PathTraversal_ServicePath(t *testing.T) {
 
 func TestSecurity_ShouldRestart_NilExtensions(t *testing.T) {
 	repoDir := setupRepoDir(t)
-	defer os.RemoveAll(repoDir)
+	defer func() { _ = os.RemoveAll(repoDir) }()
 
 	svc := config.ServiceConfig{
 		Name:           "api",

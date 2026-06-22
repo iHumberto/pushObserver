@@ -8,6 +8,9 @@
 # from the bundled template. Edit it to add your hooks and secrets,
 # then restart: docker compose restart push-observer
 #
+# TLS: set SERVER_TLS=true if pushObserver is behind an HTTPS reverse proxy
+# (nginx, Traefik, Caddy). Default is false (plain HTTP for homelab).
+#
 # Volumes:
 #   ./config     — push-observer.yaml and other config files
 #   ./repos      — cloned repositories (persistent storage)

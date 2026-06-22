@@ -163,7 +163,7 @@ func triggerOptions(current string) template.HTML {
 		if o.value == current {
 			sel = " selected"
 		}
-		b.WriteString(fmt.Sprintf(`<option value="%s"%s>%s</option>`, o.value, sel, o.label))
+		fmt.Fprintf(&b, `<option value="%s"%s>%s</option>`, o.value, sel, o.label)
 	}
 	// #nosec G203 — all option values and labels are hardcoded, not user-controlled
 	return template.HTML(b.String())

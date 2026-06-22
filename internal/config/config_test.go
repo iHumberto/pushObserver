@@ -63,8 +63,8 @@ func TestExpandEnv_MultipleVars(t *testing.T) {
 
 func TestExpandEnv_NoShellExpansion(t *testing.T) {
 	// Env vars containing shell metacharacters should be literal, not executed.
-	os.Setenv("SHELL_VAR", "$(id) `whoami`")
-	defer os.Unsetenv("SHELL_VAR")
+	_ = os.Setenv("SHELL_VAR", "$(id) `whoami`")
+	defer func() { _ = os.Unsetenv("SHELL_VAR") }()
 
 	result := expandEnv([]byte("${SHELL_VAR}"))
 	if string(result) != "$(id) `whoami`" {
@@ -74,10 +74,10 @@ func TestExpandEnv_NoShellExpansion(t *testing.T) {
 
 func TestExpandEnv_RecursiveExpansionBlocked(t *testing.T) {
 	// A="${B}" and B="secret" — should NOT double-expand A.
-	os.Setenv("A", "ref_${B}")
-	os.Setenv("B", "secret")
-	defer os.Unsetenv("A")
-	defer os.Unsetenv("B")
+	_ = os.Setenv("A", "ref_${B}")
+	_ = os.Setenv("B", "secret")
+	defer func() { _ = os.Unsetenv("A") }()
+	defer func() { _ = os.Unsetenv("B") }()
 
 	result := expandEnv([]byte("${A}"))
 	if string(result) != "ref_${B}" {
@@ -97,8 +97,8 @@ func TestExpandEnv_EmptyVarName(t *testing.T) {
 
 func TestExpandEnv_LargeValue(t *testing.T) {
 	// Large env values shouldn't crash.
-	os.Setenv("HUGE", strings.Repeat("x", 10_000))
-	defer os.Unsetenv("HUGE")
+	_ = os.Setenv("HUGE", strings.Repeat("x", 10_000))
+	defer func() { _ = os.Unsetenv("HUGE") }()
 
 	result := expandEnv([]byte("${HUGE}"))
 	if len(result) != 10_000 {
@@ -137,7 +137,7 @@ logging:
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	_ = os.Setenv("HMAC_SECRET", "testsecret")
-	defer os.Unsetenv("HMAC_SECRET")
+	defer func() { _ = os.Unsetenv("HMAC_SECRET") }()
 
 	cfg, err := Load(filepath.Join(tmpDir, "push-observer.yaml"))
 	if err != nil {
@@ -200,10 +200,10 @@ func TestLoad_MissingFile_CreatesDefault(t *testing.T) {
 }
 
 func TestLoad_EnvSubstitution(t *testing.T) {
-	os.Setenv("MY_PORT", "1234")
-	os.Setenv("MY_SECRET", "supersecret")
-	defer os.Unsetenv("MY_PORT")
-	defer os.Unsetenv("MY_SECRET")
+	_ = os.Setenv("MY_PORT", "1234")
+	_ = os.Setenv("MY_SECRET", "supersecret")
+	defer func() { _ = os.Unsetenv("MY_PORT") }()
+	defer func() { _ = os.Unsetenv("MY_SECRET") }()
 
 	tmpDir := setupTempConfig(t, `server:
   port: ${MY_PORT}
@@ -298,7 +298,7 @@ logging:
   level: info
   format: json
 `)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	_, err := Load(filepath.Join(tmpDir, "push-observer.yaml"))
 	if err == nil {
@@ -315,8 +315,8 @@ func TestLoad_EnvSubstitutionDoesNotExpandPaths(t *testing.T) {
 	// Env substitution is string replacement, not path traversal.
 	// The scan uses filepath.Join which normalizes. This test verifies
 	// that repo_dir values from env are used literally (no escaping).
-	os.Setenv("TRAVERSAL_PATH", "../../../etc")
-	defer os.Unsetenv("TRAVERSAL_PATH")
+	_ = os.Setenv("TRAVERSAL_PATH", "../../../etc")
+	defer func() { _ = os.Unsetenv("TRAVERSAL_PATH") }()
 
 	tmpDir := setupTempConfig(t, `server:
   port: 9090
@@ -336,7 +336,7 @@ logging:
   level: info
   format: json
 `)
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	cfg, err := Load(filepath.Join(tmpDir, "push-observer.yaml"))
 	if err != nil {

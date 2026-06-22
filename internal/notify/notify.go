@@ -171,7 +171,7 @@ func (n *Notifier) SendDeployResult(ctx context.Context, result *deploy.DeployRe
 		case svc.Changed:
 			fmt.Fprintf(&details, "- **%s**: build/restart triggered but failed ⚠️\n", svc.Name)
 		default:
-			details.WriteString(fmt.Sprintf("- **%s**: no changes\n", svc.Name))
+			fmt.Fprintf(&details, "- **%s**: no changes\n", svc.Name)
 		}
 	}
 
