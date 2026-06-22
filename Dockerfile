@@ -41,7 +41,8 @@ WORKDIR /home/webhook
 
 # Create directories for SSH keys, config, and repos
 RUN mkdir -p /home/webhook/.ssh /home/webhook/.config /home/webhook/repos \
-    && chmod 700 /home/webhook/.ssh
+    && chmod 700 /home/webhook/.ssh \
+    && chown -R webhook:webhook /home/webhook
 
 # Bundle default config template — entrypoint copies it on first run
 COPY --chown=webhook:webhook push-observer.yaml /home/webhook/push-observer.yaml.default

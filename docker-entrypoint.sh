@@ -11,6 +11,11 @@ DEFAULT="/home/webhook/push-observer.yaml.default"
 # Ensure config directory exists
 mkdir -p "$(dirname "$CONFIG")"
 
+# Ensure config directory is writable by webhook user
+# Defends against: (a) stale Docker layer cache with root-owned .config
+# (b) volume mounts from host with root ownership
+chown webhook:webhook "$(dirname "$CONFIG")" 2>/dev/null || true
+
 if [ ! -f "$CONFIG" ]; then
     echo "==> No config found at $CONFIG"
     if [ -f "$DEFAULT" ]; then
