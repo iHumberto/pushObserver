@@ -21,3 +21,5 @@ push-observer-arm64
 
 #local developing
 docker-compose.dev.yaml
+config/
+repos/
