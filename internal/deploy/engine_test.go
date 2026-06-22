@@ -677,9 +677,15 @@ func createFile(t *testing.T, repoDir, relPath, content string) {
 func BenchmarkShouldRestart(b *testing.B) {
 	repoDir := b.TempDir()
 	apiDir := filepath.Join(repoDir, "api")
-	os.MkdirAll(apiDir, 0o755)
-	os.WriteFile(filepath.Join(apiDir, ".env"), []byte("KEY=val"), 0o644)
-	os.WriteFile(filepath.Join(apiDir, "main.py"), []byte("print('hi')"), 0o644)
+	if err := os.MkdirAll(apiDir, 0o755); err != nil {
+		b.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(apiDir, ".env"), []byte("KEY=val"), 0o644); err != nil {
+		b.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(apiDir, "main.py"), []byte("print('hi')"), 0o644); err != nil {
+		b.Fatal(err)
+	}
 
 	svc := config.ServiceConfig{
 		Name:           "api",

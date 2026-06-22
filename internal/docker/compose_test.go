@@ -13,30 +13,6 @@ import (
 
 // ────────────────────── Test helpers ────────────────────────────────────
 
-// mockExecCmd returns a function that can replace execCommand in tests.
-// responses maps command string → (stdout, error). The command string is
-// built from the full args slice joined by spaces.
-func mockExecCmd(responses map[string]string) func(context.Context, string, ...string) *exec.Cmd {
-	// Save original.
-	orig := execCommand
-	t := time.Now() // dummy time so each test gets unique "pid"
-
-	return func(ctx context.Context, name string, args ...string) *exec.Cmd {
-		key := name + " " + strings.Join(args, " ")
-		if resp, ok := responses[key]; ok {
-			// Return a fake command that succeeds with the given output.
-			cmd := exec.CommandContext(ctx, "echo", resp)
-			return cmd
-		}
-		// Unknown command — fail with a clear message.
-		cmd := exec.CommandContext(ctx, "false")
-		// Use a flag file to communicate the unknown command.
-		_ = orig
-		_ = t
-		return cmd
-	}
-}
-
 // setupTempDir creates a temporary directory with a docker-compose.yaml and
 // optional subdirectories. Returns the root dir path and cleanup function.
 func setupTempDir(t *testing.T, composeContent string, subdirs ...string) (string, func()) {

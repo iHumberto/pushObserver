@@ -3,7 +3,6 @@ package webhook
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -388,14 +387,6 @@ func computeHMACSHA256(data []byte, key string) string {
 	mac.Write(data)
 	return hex.EncodeToString(mac.Sum(nil))
 }
-
-// computeHMACSHA1 computes HMAC-SHA1 for reference.
-func computeHMACSHA1(data []byte, key string) string {
-	mac := hmac.New(sha1.New, []byte(key))
-	mac.Write(data)
-	return hex.EncodeToString(mac.Sum(nil))
-}
-
 // Test helper: verify body can still be read after Validate
 func TestValidate_BodyReadable(t *testing.T) {
 	payload := []byte(`{"ref":"refs/heads/main"}`)

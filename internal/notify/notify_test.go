@@ -99,7 +99,9 @@ func TestSend_Success(t *testing.T) {
 func TestSend_EmptyTag_OmitsTagField(t *testing.T) {
 	var rawJSON json.RawMessage
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&rawJSON)
+		if err := json.NewDecoder(r.Body).Decode(&rawJSON); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -112,7 +114,9 @@ func TestSend_EmptyTag_OmitsTagField(t *testing.T) {
 
 	// Verify tag field is omitted (omitempty) when empty
 	var m map[string]interface{}
-	json.Unmarshal(rawJSON, &m)
+	if err := json.Unmarshal(rawJSON, &m); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
 	if _, exists := m["tag"]; exists {
 		t.Error("tag field should be omitted when empty (omitempty)")
 	}
@@ -121,7 +125,9 @@ func TestSend_EmptyTag_OmitsTagField(t *testing.T) {
 func TestSend_EmptyFormat_OmitsFormatField(t *testing.T) {
 	var rawJSON json.RawMessage
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&rawJSON)
+		if err := json.NewDecoder(r.Body).Decode(&rawJSON); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -133,7 +139,9 @@ func TestSend_EmptyFormat_OmitsFormatField(t *testing.T) {
 	}
 
 	var m map[string]interface{}
-	json.Unmarshal(rawJSON, &m)
+	if err := json.Unmarshal(rawJSON, &m); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
 	if _, exists := m["format"]; exists {
 		t.Error("format field should be omitted when empty (omitempty)")
 	}
@@ -228,7 +236,9 @@ func TestSend_ContextTimeout(t *testing.T) {
 func TestSend_SpecialCharacters(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -256,7 +266,9 @@ func TestSend_SpecialCharacters(t *testing.T) {
 func TestNotifySuccess_Format(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -287,7 +299,9 @@ func TestNotifySuccess_Format(t *testing.T) {
 func TestNotifyFailure_Format(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -312,7 +326,9 @@ func TestNotifyFailure_Format(t *testing.T) {
 func TestNotifyNoChanges_WithTag(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -345,7 +361,9 @@ func TestNotifyNoChanges_EmptyTag_Silent(t *testing.T) {
 func TestSendDeployResult_Success(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -390,7 +408,9 @@ func TestSendDeployResult_Success(t *testing.T) {
 func TestSendDeployResult_Failure(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -447,7 +467,9 @@ func TestSendDeployResult_NilResult(t *testing.T) {
 func TestSendDeployResult_ShortHash(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -480,7 +502,9 @@ func TestSendDeployResult_ShortHash(t *testing.T) {
 func TestSendDeployResult_ServiceError(t *testing.T) {
 	var receivedPayload apprisePayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedPayload)
+		if err := json.NewDecoder(r.Body).Decode(&receivedPayload); err != nil {
+			t.Errorf("decode failed: %v", err)
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -555,7 +579,9 @@ func TestApprisePayload_JSONContentType(t *testing.T) {
 	defer srv.Close()
 
 	n := New(srv.URL+"/notify", "ok", "fail", "", 10*time.Second)
-	n.Send(context.Background(), "Title", "Body", "tag", "text")
+	if err := n.Send(context.Background(), "Title", "Body", "tag", "text"); err != nil {
+		t.Errorf("Send failed: %v", err)
+	}
 }
 
 // ────────────────────── shortHash tests ───────────────────────────────

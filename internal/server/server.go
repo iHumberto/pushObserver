@@ -121,7 +121,9 @@ func (s *Server) Start() error {
 		select {
 		case sig := <-sigCh:
 			slog.Info("received signal, shutting down", "signal", sig)
-			s.Shutdown()
+			if err := s.Shutdown(); err != nil {
+				slog.Error("shutdown failed", "error", err)
+			}
 		case <-s.ctx.Done():
 			// Already shutting down.
 		}
@@ -194,7 +196,9 @@ func (s *Server) routes() http.Handler {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"ok"}`))
+	if _, err := w.Write([]byte(`{"status":"ok"}`)); err != nil {
+		slog.Error("health check write failed", "error", err)
+	}
 }
 
 // ─────────────────────── Last Result ────────────────────────────────────

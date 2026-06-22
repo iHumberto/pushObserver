@@ -59,7 +59,9 @@ func main() {
 	go func() {
 		<-ctx.Done()
 		slog.Info("pushObserver shutting down", "signal", ctx.Err())
-		srv.Shutdown()
+		if err := srv.Shutdown(); err != nil {
+			slog.Error("shutdown failed", "error", err)
+		}
 	}()
 
 	if err := srv.Start(); err != nil {

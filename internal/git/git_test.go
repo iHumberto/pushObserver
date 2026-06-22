@@ -425,7 +425,9 @@ func TestChangedFiles_MultipleFiles(t *testing.T) {
 	addCommit(t, srcDir, "file-a.txt", "content A")
 	addCommit(t, srcDir, "file-b.txt", "content B")
 	// Create nested directory first, then add nested file
-	os.MkdirAll(filepath.Join(srcDir, "nested"), 0o755)
+	if err := os.MkdirAll(filepath.Join(srcDir, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	addCommit(t, srcDir, "nested/file-c.txt", "content C")
 	runGit(t, srcDir, "push", "origin", "main")
 

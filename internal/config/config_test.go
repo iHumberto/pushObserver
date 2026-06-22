@@ -659,8 +659,12 @@ func TestScanServices_ComposeInRepoRoot(t *testing.T) {
 		".": true, // docker-compose.yaml in repo root
 	})
 
-	os.MkdirAll(tmpDir, 0o755)
-	os.WriteFile(filepath.Join(tmpDir, "docker-compose.yaml"), []byte("services:\n"), 0o644)
+	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "docker-compose.yaml"), []byte("services:\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	services := ScanServices(tmpDir)
 	if len(services) != 1 {
@@ -702,8 +706,10 @@ func TestScanServices_SymlinkOutsideRepo(t *testing.T) {
 	// engine) must validate with filepath.EvalSymlinks. This test confirms
 	// we don't crash and return the entry name.
 	tmpDir := t.TempDir()
-	os.Symlink("/etc", filepath.Join(tmpDir, "escape"))
-	os.MkdirAll(filepath.Join(tmpDir, "escape"), 0o755) // this actually fails since escape is not a dir...
+	if err := os.Symlink("/etc", filepath.Join(tmpDir, "escape")); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.MkdirAll(filepath.Join(tmpDir, "escape"), 0o755) // expected to fail — escape is a symlink, not a dir
 
 	// Actually, os.Symlink creates a symlink; os.MkdirAll fails if target
 	// exists. Let's test that ScanServices handles the case gracefully.
@@ -725,8 +731,12 @@ func TestScanServices_AdjacentDockerComposeFile(t *testing.T) {
 	// Should be detected. Also test a file that's empty.
 	tmpDir := t.TempDir()
 	subDir := filepath.Join(tmpDir, "myservice")
-	os.MkdirAll(subDir, 0o755)
-	os.WriteFile(filepath.Join(subDir, "docker-compose.yaml"), []byte(""), 0o644)
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "docker-compose.yaml"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	services := ScanServices(tmpDir)
 	if len(services) != 1 {
