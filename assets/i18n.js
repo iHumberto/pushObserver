@@ -234,3 +234,10 @@ function initI18N() {
     document.documentElement.lang = _currentLang;
     applyTranslations();
 }
+
+// Auto-initialize on DOMContentLoaded (no inline onload needed).
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initI18N);
+} else {
+    initI18N();
+}

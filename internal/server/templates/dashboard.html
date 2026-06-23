@@ -74,26 +74,34 @@
       text-decoration: none;
     }
 
-    /* ──────────────── Language Selector ──────────────── */
+    /* ──────────────── Language Selector (floating pill) ──────────────── */
     #lang-bar {
-      display: flex;
-      align-items: center;
-      padding: 4px 24px;
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 1000;
     }
     #lang-select {
-      background: var(--bg);
+      background: var(--bg-card);
       color: var(--text-dim);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 4px 8px;
+      border-radius: 20px;
+      padding: 6px 14px;
       font-size: 13px;
       font-family: var(--font);
       cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      transition: border-color .15s, color .15s, box-shadow .15s;
     }
-    #lang-select:hover { border-color: var(--accent); }
-    #lang-select:focus { outline: none; border-color: var(--accent); }
+    #lang-select:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    #lang-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(88,166,255,0.25);
+    }
 
     /* ──────────────── Main ──────────────── */
     main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
@@ -210,7 +218,8 @@
   </style>
   <script src="/assets/i18n.js"></script>
 </head>
-<body onload="initI18N()">
+<body>
+  <div id="lang-bar"></div>
   <header>
     <h1><img src="/assets/favicon.svg" alt="" width="28" height="28" style="vertical-align:middle;margin-right:8px;">push<span>Observer</span></h1>
     <nav>
@@ -219,7 +228,6 @@
       {{if .Hook}}<a href="/hooks/{{.Hook.ID}}" class="{{if eq .Section "hook-detail"}}active{{end}}">{{.Hook.ID}}</a>{{end}}
     </nav>
   </header>
-  <div id="lang-bar"></div>
   <main>
     {{if .Error}}
     <div class="alert alert-error">{{.Error}}</div>

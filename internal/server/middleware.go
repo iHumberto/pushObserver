@@ -76,9 +76,9 @@ func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-XSS-Protection", "0")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "")
-		// CSP: allow inline styles (for vanilla CSS in templates) but nothing else.
+		// CSP: allow scripts and styles from same origin, inline styles for vanilla CSS.
 		w.Header().Set("Content-Security-Policy",
-			"default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'")
+			"default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'")
 		next.ServeHTTP(w, r)
 	})
 }
