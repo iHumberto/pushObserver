@@ -75,17 +75,18 @@
     }
 
     /* ──────────────── Language Selector ──────────────── */
-    #lang-bar { margin-left: 12px; }
+    #lang-bar { display: flex; align-items: center; }
     #lang-select {
-      font-size: 13px;
-      padding: 3px 8px;
       background: var(--bg);
       color: var(--text-dim);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 13px;
       font-family: var(--font);
+      cursor: pointer;
     }
+    #lang-select:hover { border-color: var(--accent); }
     #lang-select:focus { outline: none; border-color: var(--accent); }
 
     /* ──────────────── Main ──────────────── */
@@ -210,10 +211,10 @@
       <a href="/" class="{{if eq .Section "dashboard"}}active{{end}}" data-i18n="nav_hooks">Hooks</a>
       <a href="/hooks/new" class="{{if eq .Section "new-hook"}}active{{end}}" data-i18n="nav_new">+ Novo</a>
       {{if .Hook}}<a href="/hooks/{{.Hook.ID}}" class="{{if eq .Section "hook-detail"}}active{{end}}">{{.Hook.ID}}</a>{{end}}
+      <div id="lang-bar"></div>
     </nav>
   </header>
   <main>
-    <div id="lang-bar" style="display:flex;justify-content:flex-end;margin-bottom:20px;"></div>
     {{if .Error}}
     <div class="alert alert-error">{{.Error}}</div>
     {{end}}

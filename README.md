@@ -289,6 +289,22 @@ api_key: "${PUSH_OBSERVER_API_KEY}"
 
 Then pass the key as a header: `Authorization: Bearer <your-api-key>`.
 
+## 🌐 Language
+
+The dashboard speaks your language. Open `http://localhost:9090` and look for
+the language selector in the top-right corner:
+
+| Selector | What it does |
+|----------|-------------|
+| 🇧🇷 pt-BR | Portuguese (default) — the dashboard loads in Portuguese on first visit |
+| 🇺🇸 en-US | English — switch at any time for an English interface |
+
+Your choice is saved automatically — the dashboard remembers your preference
+even after you close the browser. It works on every page: the hook list, the
+create/edit form, and the hook detail view with services.
+
+No setup needed. The language selector works in any modern browser out of the box.
+
 ## Configuration Reference
 
 The full config lives in `push-observer.yaml`. Key sections:
