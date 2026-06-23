@@ -46,8 +46,11 @@ func main() {
 	// Initialize deploy engine.
 	engine := deploy.New(cfg.Hooks, cfg.Server.WriteTimeout.Duration())
 
-	// Parse HTML templates.
-	tmpl := template.Must(template.New("").Funcs(server.TemplateFuncs()).ParseGlob("internal/server/templates/*.html"))
+	// Parse HTML templates from embedded filesystem.
+	// Templates are compiled into the binary (see server.TemplatesFS), so no
+	// runtime filesystem dependency — the Docker panic on missing templates/*.html
+	// is permanently fixed.
+	tmpl := template.Must(template.New("").Funcs(server.TemplateFuncs()).ParseFS(server.TemplatesFS, "templates/*.html"))
 
 	// Create and start HTTP server.
 	srv := server.New(cfg, engine, tmpl)

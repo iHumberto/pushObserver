@@ -70,11 +70,11 @@ func testConfigNoLimit(t *testing.T) *config.Config {
 	return cfg
 }
 
-// testTemplate parses the dashboard.html template for testing.
+// testTemplate parses the dashboard.html template from embedded filesystem for testing.
 func testTemplate(t *testing.T) *template.Template {
 	t.Helper()
 	tmpl := template.New("").Funcs(TemplateFuncs())
-	_, err := tmpl.ParseGlob("templates/*.html")
+	_, err := tmpl.ParseFS(TemplatesFS, "templates/*.html")
 	if err != nil {
 		// Fallback: create a minimal inline template for tests.
 		tmpl = template.Must(template.New("dashboard.html").Funcs(TemplateFuncs()).Parse(`
