@@ -1,4 +1,4 @@
-# <img src="assets/favicon.ico" width="24" height="24" style="vertical-align:middle"> pushObserver
+# <img src="assets/favicon.ico" width="128" height="128" style="vertical-align:middle"> pushObserver
 
 **Faça push no git → deploy no servidor em 1 minuto. Zero scripts.**
 
