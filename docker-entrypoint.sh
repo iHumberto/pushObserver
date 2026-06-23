@@ -14,11 +14,23 @@ mkdir -p "$(dirname "$CONFIG")"
 # Ensure config directory is writable by the webhook user.
 # chown doesn't work here (we run as non-root), so we detect and fail early
 # with a clear message instead of a cryptic "Permission denied".
-if [ ! -w "$(dirname "$CONFIG")" ]; then
-    echo "ERROR: $(dirname "$CONFIG") is not writable by $(whoami) (UID $(id -u))" >&2
-    echo "Fix: ensure the directory is owned by UID $(id -u), e.g.:" >&2
-    echo "  docker run --user root <image> chown -R $(id -u):$(id -g) $(dirname "$CONFIG")" >&2
-    echo "  or on host volume: chown -R $(id -u):$(id -g) /path/to/.config" >&2
+#
+# Common cause: bind mount created by Docker daemon (running as root) —
+# the host directory gets root:root ownership, overriding the Dockerfile's chown.
+# Fix: chown the HOST directory before starting the container.
+CONFIG_DIR="$(dirname "$CONFIG")"
+if [ ! -w "$CONFIG_DIR" ]; then
+    OWNER=$(stat -c '%U:%G' "$CONFIG_DIR" 2>/dev/null || echo "unknown")
+    PERMS=$(stat -c '%a' "$CONFIG_DIR" 2>/dev/null || echo "???")
+    echo "ERROR: $CONFIG_DIR is not writable" >&2
+    echo "  Current owner: $OWNER, permissions: $PERMS" >&2
+    echo "  Running as:    $(whoami) (UID $(id -u), GID $(id -g))" >&2
+    echo "" >&2
+    echo "This is usually caused by a bind mount where the host directory" >&2
+    echo "was created by the Docker daemon with root ownership." >&2
+    echo "" >&2
+    echo "Fix on the HOST (not inside the container):" >&2
+    echo "  sudo chown -R $(id -u):$(id -g) /path/to/host/config/dir" >&2
     exit 1
 fi
 
