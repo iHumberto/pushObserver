@@ -70,7 +70,20 @@ const translations = {
         btn_delete: '🗑 Excluir',
         confirm_delete: 'Excluir hook',
         hook_count: 'Hooks ({count})',
-        services_count: 'Serviços ({count})'
+        services_count: 'Serviços ({count})',
+        notifications_title: 'Notificações',
+        label_notifications_hook: 'Notificações',
+        notify_on_success: 'No Sucesso',
+        notify_on_failure: 'Na Falha',
+        notify_on_no_changes: 'Sem Mudanças',
+        label_apprise_url: 'Apprise URL',
+        hint_apprise_url: 'URL do container Apprise. Ex: http://apprise:8000',
+        label_tag_success: 'Tag — Sucesso',
+        label_tag_failure: 'Tag — Falha',
+        label_tag_no_changes: 'Tag — Sem Mudanças',
+        placeholder_tag_no_changes: 'deploy-no-changes (opcional)',
+        hint_tag_no_changes: 'Deixe vazio para não notificar quando não houver mudanças.',
+        btn_save_notifications: 'Salvar Notificações'
     },
     'en-US': {
         title: 'pushObserver',
@@ -138,7 +151,20 @@ const translations = {
         btn_delete: '🗑 Delete',
         confirm_delete: 'Delete hook',
         hook_count: 'Hooks ({count})',
-        services_count: 'Services ({count})'
+        services_count: 'Services ({count})',
+        notifications_title: 'Notifications',
+        label_notifications_hook: 'Notifications',
+        notify_on_success: 'On Success',
+        notify_on_failure: 'On Failure',
+        notify_on_no_changes: 'On No Changes',
+        label_apprise_url: 'Apprise URL',
+        hint_apprise_url: 'Apprise container URL. e.g. http://apprise:8000',
+        label_tag_success: 'Tag — Success',
+        label_tag_failure: 'Tag — Failure',
+        label_tag_no_changes: 'Tag — No Changes',
+        placeholder_tag_no_changes: 'deploy-no-changes (optional)',
+        hint_tag_no_changes: 'Leave empty to skip notification when nothing changed.',
+        btn_save_notifications: 'Save Notification Settings'
     }
 };
 
