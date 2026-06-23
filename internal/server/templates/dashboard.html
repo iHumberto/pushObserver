@@ -75,7 +75,13 @@
     }
 
     /* ──────────────── Language Selector ──────────────── */
-    #lang-bar { display: flex; align-items: center; }
+    #lang-bar {
+      display: flex;
+      align-items: center;
+      padding: 4px 24px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
     #lang-select {
       background: var(--bg);
       color: var(--text-dim);
@@ -211,9 +217,9 @@
       <a href="/" class="{{if eq .Section "dashboard"}}active{{end}}" data-i18n="nav_hooks">Hooks</a>
       <a href="/hooks/new" class="{{if eq .Section "new-hook"}}active{{end}}" data-i18n="nav_new">+ Novo</a>
       {{if .Hook}}<a href="/hooks/{{.Hook.ID}}" class="{{if eq .Section "hook-detail"}}active{{end}}">{{.Hook.ID}}</a>{{end}}
-      <div id="lang-bar"></div>
     </nav>
   </header>
+  <div id="lang-bar"></div>
   <main>
     {{if .Error}}
     <div class="alert alert-error">{{.Error}}</div>
