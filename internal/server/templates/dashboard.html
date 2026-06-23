@@ -231,8 +231,8 @@
 
     {{/* ── Dashboard Section ── */}}
     {{if eq .Section "dashboard"}}
-      {{template "notifications-card" .}}
       {{template "dashboard-section" .}}
+      {{template "notifications-card" .}}
 
     {{/* ── New Hook Section ── */}}
     {{else if eq .Section "new-hook"}}
@@ -502,7 +502,7 @@
       <div class="form-group">
         <label for="apprise_url" data-i18n="label_apprise_url">Apprise URL</label>
         <input type="text" id="apprise_url" name="apprise_url"
-               placeholder="http://apprise:8000"
+               placeholder="http://apprise:8000/notify/pushobserver"
                value="{{.AppriseURL}}">
         <p class="hint" data-i18n="hint_apprise_url">URL do container Apprise. Ex: http://apprise:8000</p>
       </div>
