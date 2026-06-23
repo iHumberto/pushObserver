@@ -1,10 +1,11 @@
 {{/* dashboard.html — pushObserver server-side rendered dashboard.
     Dark theme, vanilla CSS (no JS framework), homelab feel.
+    i18n: pt-BR (default) + en-US via assets/i18n.js (data-i18n attributes).
     Sections: dashboard (hook list), new-hook, edit-hook, hook-detail.
 */}}
 {{define "dashboard.html"}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -59,7 +60,7 @@
       letter-spacing: -0.3px;
     }
     header h1 span { color: var(--accent); font-weight: 300; }
-    header nav { display: flex; gap: 16px; }
+    header nav { display: flex; gap: 16px; align-items: center; }
     header nav a {
       color: var(--text-dim);
       font-size: 14px;
@@ -72,6 +73,20 @@
       border-color: var(--accent);
       text-decoration: none;
     }
+
+    /* ──────────────── Language Selector ──────────────── */
+    #lang-bar { margin-left: 12px; }
+    #lang-select {
+      font-size: 13px;
+      padding: 3px 8px;
+      background: var(--bg);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-family: var(--font);
+    }
+    #lang-select:focus { outline: none; border-color: var(--accent); }
 
     /* ──────────────── Main ──────────────── */
     main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
@@ -186,17 +201,19 @@
       main { padding: 16px 12px; }
     }
   </style>
+  <script src="/assets/i18n.js"></script>
 </head>
-<body>
+<body onload="initI18N()">
   <header>
     <h1>push<span>Observer</span></h1>
     <nav>
-      <a href="/" class="{{if eq .Section "dashboard"}}active{{end}}">Hooks</a>
-      <a href="/hooks/new" class="{{if eq .Section "new-hook"}}active{{end}}">+ New</a>
+      <a href="/" class="{{if eq .Section "dashboard"}}active{{end}}" data-i18n="nav_hooks">Hooks</a>
+      <a href="/hooks/new" class="{{if eq .Section "new-hook"}}active{{end}}" data-i18n="nav_new">+ Novo</a>
       {{if .Hook}}<a href="/hooks/{{.Hook.ID}}" class="{{if eq .Section "hook-detail"}}active{{end}}">{{.Hook.ID}}</a>{{end}}
     </nav>
   </header>
   <main>
+    <div id="lang-bar" style="display:flex;justify-content:flex-end;margin-bottom:20px;"></div>
     {{if .Error}}
     <div class="alert alert-error">{{.Error}}</div>
     {{end}}
@@ -228,16 +245,16 @@
 {{/* ──────────────────── Dashboard Section ──────────────────── */}}
 {{define "dashboard-section"}}
 <div class="card">
-  <h2>Hooks ({{len .Hooks}})</h2>
+  <h2><span data-i18n="dashboard_title">Hooks</span> ({{len .Hooks}})</h2>
   {{if .Hooks}}
   <table>
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Repository</th>
-        <th>Branch</th>
-        <th>Services</th>
-        <th>Status</th>
+        <th data-i18n="table_id">ID</th>
+        <th data-i18n="table_repo">Repositório</th>
+        <th data-i18n="table_branch">Branch</th>
+        <th data-i18n="table_services">Serviços</th>
+        <th data-i18n="table_status">Status</th>
         <th></th>
       </tr>
     </thead>
@@ -254,11 +271,11 @@
             <span class="badge badge-{{statusClass $res}}">{{statusText $res}}</span>
             <span style="font-size:11px;color:var(--text-dim);margin-left:4px;">{{formatDuration $res.Duration}}</span>
           {{else}}
-            <span style="color:var(--text-dim);font-size:12px;">never</span>
+            <span style="color:var(--text-dim);font-size:12px;" data-i18n="status_never">nunca</span>
           {{end}}
         </td>
         <td>
-          <a href="/hooks/{{.ID}}/edit" class="btn btn-secondary btn-sm">Edit</a>
+          <a href="/hooks/{{.ID}}/edit" class="btn btn-secondary btn-sm" data-i18n="btn_edit">Editar</a>
         </td>
       </tr>
       {{end}}
@@ -266,8 +283,8 @@
   </table>
   {{else}}
   <p style="color:var(--text-dim);text-align:center;padding:32px 0;">
-    No hooks configured.
-    <a href="/hooks/new">Create your first hook</a>.
+    <span data-i18n="empty_hooks">Nenhum hook configurado.</span>
+    <a href="/hooks/new" data-i18n="empty_hooks_link">Crie seu primeiro hook</a>.
   </p>
   {{end}}
 </div>
@@ -276,88 +293,94 @@
 {{/* ──────────────────── Hook Form Section ──────────────────── */}}
 {{define "hook-form"}}
 <div class="card">
-  <h2>{{.Title}}</h2>
+  <h2 data-i18n="{{if .Hook}}form_edit_title{{else}}form_create_title{{end}}">{{.Title}}</h2>
   <form method="POST" action="{{.Action}}">
     {{if .CSRF}}<input type="hidden" name="csrf_token" value="{{.CSRF}}">{{end}}
     {{if eq .Method "PUT"}}<input type="hidden" name="_method" value="PUT">{{end}}
 
     <div class="form-row">
       <div class="form-group">
-        <label for="id">Hook ID *</label>
-        <input type="text" id="id" name="id" required placeholder="e.g. homelab"
+        <label for="id" data-i18n="label_hook_id">Hook ID *</label>
+        <input type="text" id="id" name="id" required
+               data-i18n-placeholder="placeholder_hook_id" placeholder="ex: homelab"
                {{if .Hook}}value="{{.Hook.ID}}" readonly{{end}}>
-        <p class="hint">Unique identifier. Used in webhook URL: /hook/{id}</p>
+        <p class="hint" data-i18n="hint_hook_id">Identificador único. Usado na URL do webhook: /hook/{id}</p>
       </div>
       <div class="form-group">
-        <label for="branch">Branch</label>
-        <input type="text" id="branch" name="branch" placeholder="main"
+        <label for="branch" data-i18n="label_branch">Branch</label>
+        <input type="text" id="branch" name="branch"
+               data-i18n-placeholder="placeholder_branch" placeholder="main"
                value="{{if .Hook}}{{.Hook.Branch}}{{end}}">
-        <p class="hint">Git branch to track. Default: main</p>
+        <p class="hint" data-i18n="hint_branch">Branch Git a monitorar. Padrão: main</p>
       </div>
     </div>
 
     <div class="form-group">
-      <label for="repo_url">Repository URL *</label>
+      <label for="repo_url" data-i18n="label_repo_url">URL do Repositório *</label>
       <input type="text" id="repo_url" name="repo_url" required
-             placeholder="git@github.com:user/repo.git"
+             data-i18n-placeholder="placeholder_repo_url" placeholder="git@github.com:usuario/repo.git"
              value="{{if .Hook}}{{.Hook.RepoURL}}{{end}}">
-      <p class="hint">SSH or HTTPS URL. For private repos, configure git_ssh_key below.</p>
+      <p class="hint" data-i18n="hint_repo_url">URL SSH ou HTTPS. Para repos privados, configure git_ssh_key abaixo.</p>
     </div>
 
     <div class="form-group">
-      <label for="repo_dir">Repository Directory *</label>
+      <label for="repo_dir" data-i18n="label_repo_dir">Diretório do Repositório *</label>
       <input type="text" id="repo_dir" name="repo_dir" required
-             placeholder="/home/webhook/repos/my-app"
+             data-i18n-placeholder="placeholder_repo_dir" placeholder="/home/webhook/repos/meu-app"
              value="{{if .Hook}}{{.Hook.RepoDir}}{{end}}">
-      <p class="hint">Absolute path where the repository will be cloned.</p>
+      <p class="hint" data-i18n="hint_repo_dir">Caminho absoluto onde o repositório será clonado.</p>
     </div>
 
     <div class="form-group">
-      <label for="git_ssh_key">SSH Key Path</label>
+      <label for="git_ssh_key" data-i18n="label_ssh_key">Caminho da Chave SSH</label>
       <input type="text" id="git_ssh_key" name="git_ssh_key"
-             placeholder="/home/webhook/.ssh/deploy_key"
+             data-i18n-placeholder="placeholder_ssh_key" placeholder="/home/webhook/.ssh/deploy_key"
              value="{{if .Hook}}{{.Hook.GitSSHKey}}{{end}}">
-      <p class="hint">Deploy key for private repositories. Leave empty for public repos or HTTPS.</p>
+      <p class="hint" data-i18n="hint_ssh_key">Deploy key para repositórios privados. Deixe vazio para HTTPS ou repos públicos.</p>
     </div>
 
     <div class="form-row">
       <div class="form-group">
-        <label for="hmac_type">HMAC Type</label>
+        <label for="hmac_type" data-i18n="label_hmac_type">Tipo HMAC</label>
         <select id="hmac_type" name="hmac_type">
-          <option value="sha256" {{if and .Hook (eq .Hook.HMAC.Type "sha256")}}selected{{end}}>SHA-256 (GitHub, Forgejo, Gitea)</option>
-          <option value="sha1" {{if and .Hook (eq .Hook.HMAC.Type "sha1")}}selected{{end}}>SHA-1 (GitHub legacy)</option>
-          <option value="plain" {{if and .Hook (eq .Hook.HMAC.Type "plain")}}selected{{end}}>Token (GitLab)</option>
+          <option value="sha256" {{if and .Hook (eq .Hook.HMAC.Type "sha256")}}selected{{end}} data-i18n="hmac_sha256">SHA-256 (GitHub, Forgejo, Gitea)</option>
+          <option value="sha1" {{if and .Hook (eq .Hook.HMAC.Type "sha1")}}selected{{end}} data-i18n="hmac_sha1">SHA-1 (GitHub legado)</option>
+          <option value="plain" {{if and .Hook (eq .Hook.HMAC.Type "plain")}}selected{{end}} data-i18n="hmac_plain">Token (GitLab)</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="hmac_secret">HMAC Secret</label>
+        <label for="hmac_secret" data-i18n="label_hmac_secret">Segredo HMAC</label>
         <input type="password" id="hmac_secret" name="hmac_secret"
-               placeholder="${WEBHOOK_SECRET}"
+               data-i18n-placeholder="placeholder_hmac_secret" placeholder="${WEBHOOK_SECRET}"
                value="{{if .Hook}}{{.Hook.HMAC.Secret}}{{end}}">
-        <p class="hint">Use ${ENV_VAR} syntax to avoid plain-text secrets.</p>
+        <p class="hint" data-i18n="hint_hmac_secret">Use sintaxe ${ENV_VAR} para evitar secrets em texto puro.</p>
       </div>
     </div>
 
     <div class="form-group">
-      <label for="hmac_header">HMAC Header</label>
+      <label for="hmac_header" data-i18n="label_hmac_header">Header HMAC</label>
       <input type="text" id="hmac_header" name="hmac_header"
-             placeholder="X-Hub-Signature-256"
+             data-i18n-placeholder="placeholder_hmac_header" placeholder="X-Hub-Signature-256"
              value="{{if .Hook}}{{.Hook.HMAC.Header}}{{end}}">
-      <p class="hint">HTTP header containing the HMAC signature.</p>
+      <p class="hint" data-i18n="hint_hmac_header">Header HTTP contendo a assinatura HMAC.</p>
     </div>
 
     <div class="form-group">
-      <label for="content_type">Content-Type</label>
+      <label for="content_type" data-i18n="label_content_type">Content-Type</label>
       <select id="content_type" name="content_type">
-        <option value="json" {{if and .Hook (eq .Hook.ContentType "json")}}selected{{end}}>JSON</option>
-        <option value="form" {{if and .Hook (eq .Hook.ContentType "form")}}selected{{end}}>Form (URL-encoded)</option>
+        <option value="json" {{if and .Hook (eq .Hook.ContentType "json")}}selected{{end}} data-i18n="ct_json">JSON</option>
+        <option value="form" {{if and .Hook (eq .Hook.ContentType "form")}}selected{{end}} data-i18n="ct_form">Form (URL-encoded)</option>
       </select>
-      <p class="hint">Expected Content-Type of incoming webhooks.</p>
+      <p class="hint" data-i18n="hint_content_type">Content-Type esperado nos webhooks recebidos.</p>
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary">{{if .Hook}}Save Changes{{else}}Create Hook{{end}}</button>
-      <a href="/" class="btn btn-secondary">Cancel</a>
+      {{if .Hook}}
+      <button type="submit" class="btn btn-primary" data-i18n="btn_save">Salvar Alterações</button>
+      {{else}}
+      <button type="submit" class="btn btn-primary" data-i18n="btn_create">Criar Hook</button>
+      {{end}}
+      <a href="/" class="btn btn-secondary" data-i18n="btn_cancel">Cancelar</a>
     </div>
   </form>
 </div>
@@ -365,25 +388,25 @@
 
 {{/* ──────────────────── Hook Detail Section ──────────────────── */}}
 {{define "hook-detail-section"}}
-<a href="/" class="back-link">← Back to all hooks</a>
+<a href="/" class="back-link" data-i18n="back_to_hooks">← Voltar para todos os hooks</a>
 
 <div class="card">
   <h2>{{.Hook.ID}}</h2>
   <div class="meta">
-    <div class="meta-item"><strong>Repo:</strong> <code>{{.Hook.RepoURL}}</code></div>
-    <div class="meta-item"><strong>Branch:</strong> <code>{{.Hook.Branch}}</code></div>
-    <div class="meta-item"><strong>Dir:</strong> <code>{{.Hook.RepoDir}}</code></div>
+    <div class="meta-item"><strong data-i18n="detail_repo">Repo:</strong> <code>{{.Hook.RepoURL}}</code></div>
+    <div class="meta-item"><strong data-i18n="detail_branch">Branch:</strong> <code>{{.Hook.Branch}}</code></div>
+    <div class="meta-item"><strong data-i18n="detail_dir">Dir:</strong> <code>{{.Hook.RepoDir}}</code></div>
   </div>
 
-  <h2 style="margin-top:24px;">Services ({{len .Services}})</h2>
+  <h2 style="margin-top:24px;"><span data-i18n="detail_services">Serviços</span> ({{len .Services}})</h2>
   {{if .Services}}
   <table>
     <thead>
       <tr>
-        <th>Service</th>
-        <th>Path</th>
-        <th>Restart Trigger</th>
-        <th>Status</th>
+        <th data-i18n="svc_service">Serviço</th>
+        <th data-i18n="svc_path">Caminho</th>
+        <th data-i18n="svc_trigger">Gatilho de Restart</th>
+        <th data-i18n="svc_status">Status</th>
       </tr>
     </thead>
     <tbody>
@@ -412,8 +435,8 @@
   </table>
   {{else}}
   <p style="color:var(--text-dim);text-align:center;padding:24px 0;">
-    No services detected.
-    <a href="/hooks/{{.Hook.ID}}/scan" onclick="event.preventDefault();this.closest('p').querySelector('form').submit();">Scan repo for services →</a>
+    <span data-i18n="empty_services">Nenhum serviço detectado.</span>
+    <a href="/hooks/{{.Hook.ID}}/scan" onclick="event.preventDefault();this.closest('p').querySelector('form').submit();" data-i18n="scan_link">Escanear repo por serviços →</a>
   </p>
   <form method="POST" action="/hooks/{{.Hook.ID}}/scan" style="display:none;">
     <input type="hidden" name="csrf_token" value="{{.CSRF}}">
@@ -423,17 +446,17 @@
   <div class="service-actions">
     <form method="POST" action="/hooks/{{.Hook.ID}}/scan" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-      <button type="submit" class="btn btn-secondary btn-sm">🔍 Scan for new services</button>
+      <button type="submit" class="btn btn-secondary btn-sm" data-i18n="btn_scan">🔍 Buscar novos serviços</button>
     </form>
     <form method="POST" action="/hooks/{{.Hook.ID}}/trigger" style="display:inline;">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
-      <button type="submit" class="btn btn-primary btn-sm">▶ Deploy Now</button>
+      <button type="submit" class="btn btn-primary btn-sm" data-i18n="btn_deploy">▶ Deploy Agora</button>
     </form>
-    <a href="/hooks/{{.Hook.ID}}/edit" class="btn btn-secondary btn-sm">✏ Edit Hook</a>
-    <form method="POST" action="/hooks/{{.Hook.ID}}" style="display:inline;" onsubmit="return confirm('Delete hook {{.Hook.ID}}? This cannot be undone.')">
+    <a href="/hooks/{{.Hook.ID}}/edit" class="btn btn-secondary btn-sm" data-i18n="btn_edit_hook">✏ Editar Hook</a>
+    <form method="POST" action="/hooks/{{.Hook.ID}}" style="display:inline;" onsubmit="return confirmDelete('{{.Hook.ID}}')">
       <input type="hidden" name="csrf_token" value="{{.CSRF}}">
       <input type="hidden" name="_method" value="DELETE">
-      <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+      <button type="submit" class="btn btn-danger btn-sm" data-i18n="btn_delete">🗑 Excluir</button>
     </form>
   </div>
 </div>

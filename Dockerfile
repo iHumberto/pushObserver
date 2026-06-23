@@ -52,6 +52,9 @@ COPY --chown=webhook:webhook push-observer.yaml /home/webhook/push-observer.yaml
 COPY --chown=webhook:webhook docker-entrypoint.sh /usr/local/bin/
 COPY --from=builder /push-observer /usr/local/bin/push-observer
 
+# Static assets (i18n, favicon, etc.) — needed at runtime for the web dashboard
+COPY --chown=webhook:webhook assets/ /home/webhook/assets/
+
 EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q -O /dev/null http://localhost:9090/health || exit 1

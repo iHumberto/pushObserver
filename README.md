@@ -416,6 +416,53 @@ server:
 - Verify the `apprise_url` in your config points to the right container
 - Check pushObserver logs for notification errors: `docker compose logs push-observer | grep notify`
 
+### "Permission denied" creating config in .config
+
+pushObserver creates its config file in `/home/webhook/.config/` on first run.
+If this directory is owned by `root` instead of the `webhook` user, the container
+will fail with a "Permission denied" error at startup.
+
+**What causes this:**
+
+- A bind mount where the host directory was created by the Docker daemon
+  (which runs as root), overriding the correct ownership set during build.
+- An outdated Docker image built before the permission fix (commit `5a654fb`).
+
+**How to fix:**
+
+Option 1 — rebuild the image without cache (most common):
+
+```bash
+docker build --no-cache -t pushobserver:dev .
+```
+
+Then restart the container:
+
+```bash
+docker compose up -d
+```
+
+Option 2 — if you are using a bind mount for the config directory, fix
+ownership on the **host** (not inside the container):
+
+```bash
+# Replace /path/to/your/config with the actual path
+sudo chown -R 1000:1000 /path/to/your/config
+```
+
+> **Why UID 1000?** The `webhook` user inside the container has UID 1000.
+> Setting the host directory to the same UID ensures the container can
+> write to it.
+
+After fixing, the container should start and create the config file on its
+own:
+
+```
+==> No config found at /home/webhook/.config/push-observer.yaml
+==> Creating default config from bundled template...
+==> Config created.
+```
+
 ## Requirements
 
 - Docker and Docker Compose
