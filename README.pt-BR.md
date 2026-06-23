@@ -269,6 +269,48 @@ hooks:
       on_no_changes: false   # pula notificações de "nenhuma mudança"
 ```
 
+### Configurando pela WebUI
+
+Você também pode configurar as notificações diretamente pelo dashboard — sem
+precisar editar o YAML manualmente.
+
+#### Configurações globais de notificação
+
+No dashboard principal, encontre o card **🔔 Notificações** acima da lista de hooks:
+
+1. **Apprise URL** — digite o endereço do seu container Apprise (por exemplo:
+   `http://apprise:8000`). Deixe vazio para desabilitar totalmente as notificações.
+2. **Tag — Sucesso** — a tag para deploys bem-sucedidos (por exemplo:
+   `deploy-success`)
+3. **Tag — Falha** — a tag para deploys com falha (por exemplo:
+   `deploy-failure`)
+4. **Tag — Sem mudanças** — a tag para quando nada mudou (opcional — deixe vazio
+   para silenciar estas notificações)
+
+Clique em **Salvar configurações de notificação** para aplicar.
+
+> **📘 Tags:** As tags permitem direcionar notificações para serviços diferentes
+> no Apprise. Por exemplo, envie notificações de sucesso para o Telegram e
+> alertas de falha para o Discord atribuindo tags diferentes a cada serviço na
+> sua configuração do Apprise.
+
+#### Preferências de notificação por hook
+
+Ao criar ou editar um hook, procure abaixo dos campos HMAC. Você verá três
+checkboxes:
+
+- **No sucesso** — notifica quando o deploy é bem-sucedido
+- **Na falha** — notifica quando o deploy falha
+- **Sem mudanças** — notifica quando nenhuma mudança é detectada
+
+Marque ou desmarque conforme necessário e salve o hook. Cada hook mantém suas
+próprias preferências de notificação.
+
+> **💡 Entrega sob melhor esforço:** As notificações são enviadas em regime de
+> melhor esforço. Se o envio falhar (por exemplo, o Apprise estiver
+> temporariamente fora do ar), o erro é registrado no log, mas seu deploy é
+> concluído normalmente.
+
 ## Dashboard Web
 
 O pushObserver inclui um dashboard web integrado em `http://seu-servidor:9090/`.
@@ -294,8 +336,8 @@ Em seguida, passe a chave como cabeçalho: `Authorization: Bearer <sua-chave-api
 
 ## 🌐 Idioma
 
-O dashboard fala sua língua. Abra `http://localhost:9090` e procure o seletor
-de idioma no canto superior direito:
+O dashboard fala sua língua. O seletor de idioma fica na barra de navegação
+do cabeçalho, ao lado dos links **Hooks** e **+ Novo**:
 
 | Seletor | O que faz |
 |---------|-----------|

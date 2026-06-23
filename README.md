@@ -267,6 +267,46 @@ hooks:
       on_no_changes: false   # skip "nothing changed" notifications
 ```
 
+### Configuring via WebUI
+
+You can also configure notifications directly from the dashboard — no need to
+edit YAML by hand.
+
+#### Global Notification Settings
+
+On the main dashboard, find the **🔔 Notifications** card above the hooks list:
+
+1. **Apprise URL** — enter the address of your Apprise container (for example:
+   `http://apprise:8000`). Leave empty to disable notifications entirely.
+2. **Tag — Success** — the tag for successful deploys (for example:
+   `deploy-success`)
+3. **Tag — Failure** — the tag for failed deploys (for example:
+   `deploy-failure`)
+4. **Tag — No Changes** — the tag when nothing changed (optional — leave empty to
+   silence these notifications)
+
+Click **Save Notification Settings** to apply.
+
+> **📘 Tags:** Tags let you route notifications to different services in Apprise.
+> For example, send success notifications to Telegram and failure alerts to
+> Discord by assigning different tags to each service in your Apprise config.
+
+#### Per-Hook Notification Preferences
+
+When creating or editing a hook, look below the HMAC fields. You will see three
+checkboxes:
+
+- **On Success** — notify when the deploy succeeds
+- **On Failure** — notify when the deploy fails
+- **On No Changes** — notify when no changes are detected
+
+Check or uncheck as needed and save the hook. Each hook keeps its own
+notification preferences.
+
+> **💡 Best-effort delivery:** Notifications are sent on a best-effort basis. If
+> sending fails (for example, Apprise is temporarily down), the error is logged
+> but your deploy still completes normally.
+
 ## Web Dashboard
 
 pushObserver includes a built-in web dashboard at `http://your-server:9090/`.
@@ -291,8 +331,8 @@ Then pass the key as a header: `Authorization: Bearer <your-api-key>`.
 
 ## 🌐 Language
 
-The dashboard speaks your language. Open `http://localhost:9090` and look for
-the language selector in the top-right corner:
+The dashboard speaks your language. The language selector sits in the header
+navigation bar, right next to the **Hooks** and **+ New** links:
 
 | Selector | What it does |
 |----------|-------------|
