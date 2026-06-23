@@ -75,6 +75,16 @@ func New(cfg *config.Config, deployEngine *deploy.Engine, tmpl *template.Templat
 			timeout,
 		)
 		wh.SetNotifier(func(hookID string, result *deploy.DeployResult) {
+			// Respect per-hook notification flags.
+			hook := cfg.HookByID(hookID)
+			if hook != nil {
+				if result.Error != nil && !hook.Notify.OnFailure {
+					return
+				}
+				if result.Error == nil && !hook.Notify.OnSuccess {
+					return
+				}
+			}
 			// Notification is best-effort — errors are logged, not returned.
 			if err := ntf.SendDeployResult(context.Background(), result, hookID); err != nil {
 				slog.Warn("notification failed", "hook_id", hookID, "error", err)
@@ -173,6 +183,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /hooks/{id}/scan", s.ui.ScanServices)
 	mux.HandleFunc("POST /hooks/{id}/trigger", s.ui.TriggerDeploy)
 
+	// ── Notification settings ──
+	mux.HandleFunc("POST /settings/notifications", s.ui.SaveNotificationSettings)
+
 	// ── REST API (delegated to api.Handler, JSON) ──
 	s.api.RegisterRoutes(mux)
 
@@ -218,4 +231,44 @@ func (s *Server) getLastResult(hookID string) *deploy.DeployResult {
 	s.resultsMu.RLock()
 	defer s.resultsMu.RUnlock()
 	return s.results[hookID]
+}
+
+// ReloadNotifier recreates the Apprise notifier from current Notifications config.
+// Called after notification settings are updated via the WebUI.
+func (s *Server) ReloadNotifier() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.cfg.Notifications.AppriseURL == "" {
+		s.notifier = nil
+		s.webhook.SetNotifier(nil)
+		slog.Info("notifier disabled: no Apprise URL configured")
+		return
+	}
+
+	timeout := 10 * time.Second
+	ntf := notify.New(
+		s.cfg.Notifications.AppriseURL,
+		s.cfg.Notifications.TagSuccess,
+		s.cfg.Notifications.TagFailure,
+		s.cfg.Notifications.TagNoChanges,
+		timeout,
+	)
+	s.notifier = ntf
+	s.webhook.SetNotifier(func(hookID string, result *deploy.DeployResult) {
+		// Respect per-hook notification flags.
+		hook := s.cfg.HookByID(hookID)
+		if hook != nil {
+			if result.Error != nil && !hook.Notify.OnFailure {
+				return
+			}
+			if result.Error == nil && !hook.Notify.OnSuccess {
+				return
+			}
+		}
+		if err := ntf.SendDeployResult(context.Background(), result, hookID); err != nil {
+			slog.Warn("notification failed", "hook_id", hookID, "error", err)
+		}
+	})
+	slog.Info("notifier reloaded", "apprise_url", s.cfg.Notifications.AppriseURL)
 }

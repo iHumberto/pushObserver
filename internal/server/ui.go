@@ -39,6 +39,12 @@ type PageData struct {
 	CSRF     string
 	Error    string
 	Success  string
+
+	// Notification settings (global, for dashboard).
+	AppriseURL   string
+	TagSuccess   string
+	TagFailure   string
+	TagNoChanges string
 }
 
 // ServiceView is a read-only view of a service with trigger display info.
@@ -268,10 +274,15 @@ func (ui *UIRenderer) Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		Title:   "pushObserver — Dashboard",
-		Hooks:   ui.cfg.Hooks,
-		Results: results,
-		Section: "dashboard",
+		Title:      "pushObserver — Dashboard",
+		Hooks:      ui.cfg.Hooks,
+		Results:    results,
+		Section:    "dashboard",
+		CSRF:       ui.generateCSRF(w),
+		AppriseURL:   ui.cfg.Notifications.AppriseURL,
+		TagSuccess:   ui.cfg.Notifications.TagSuccess,
+		TagFailure:   ui.cfg.Notifications.TagFailure,
+		TagNoChanges: ui.cfg.Notifications.TagNoChanges,
 	}
 	ui.render(w, "dashboard.html", data)
 }
@@ -383,6 +394,11 @@ func (ui *UIRenderer) CreateHook(w http.ResponseWriter, r *http.Request) {
 		},
 		ContentType: r.FormValue("content_type"),
 		GitSSHKey:   r.FormValue("git_ssh_key"),
+		Notify: config.NotifyHookConfig{
+			OnSuccess:   r.FormValue("notify_on_success") == "true",
+			OnFailure:   r.FormValue("notify_on_failure") == "true",
+			OnNoChanges: r.FormValue("notify_on_no_changes") == "true",
+		},
 	}
 
 	// Validate required fields.
@@ -460,6 +476,11 @@ func (ui *UIRenderer) UpdateHook(w http.ResponseWriter, r *http.Request) {
 		Type:   r.FormValue("hmac_type"),
 		Secret: r.FormValue("hmac_secret"),
 		Header: r.FormValue("hmac_header"),
+	}
+	updated.Notify = config.NotifyHookConfig{
+		OnSuccess:   r.FormValue("notify_on_success") == "true",
+		OnFailure:   r.FormValue("notify_on_failure") == "true",
+		OnNoChanges: r.FormValue("notify_on_no_changes") == "true",
 	}
 
 	if updated.Branch == "" {
@@ -675,4 +696,40 @@ func (ui *UIRenderer) redirectError(w http.ResponseWriter, r *http.Request, path
 	path = strings.ReplaceAll(path, "\n", "")
 	// #nosec G710 — path sanitized above (CR/LF stripped); always internal callers
 	http.Redirect(w, r, path+"?error="+msg, http.StatusSeeOther)
+}
+
+// ─────────────────────── Notification Settings ──────────────────────────
+
+// SaveNotificationSettings handles POST /settings/notifications.
+// Updates global Apprise URL and tag configuration, then reloads the notifier.
+func (ui *UIRenderer) SaveNotificationSettings(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		ui.redirectError(w, r, "/", "failed to parse form")
+		return
+	}
+	if !ui.validateCSRF(r) {
+		ui.redirectError(w, r, "/", "invalid CSRF token")
+		return
+	}
+
+	ui.cfg.Notifications.AppriseURL = r.FormValue("apprise_url")
+	ui.cfg.Notifications.TagSuccess = r.FormValue("tag_success")
+	ui.cfg.Notifications.TagFailure = r.FormValue("tag_failure")
+	ui.cfg.Notifications.TagNoChanges = r.FormValue("tag_no_changes")
+
+	if err := ui.cfg.Save(); err != nil {
+		slog.Error("failed to save notification settings", "error", err)
+		ui.redirectError(w, r, "/", "failed to save settings")
+		return
+	}
+
+	ui.server.ReloadNotifier()
+	slog.Info("notification settings updated",
+		"apprise_url", ui.cfg.Notifications.AppriseURL,
+		"tag_success", ui.cfg.Notifications.TagSuccess,
+		"tag_failure", ui.cfg.Notifications.TagFailure,
+		"tag_no_changes", ui.cfg.Notifications.TagNoChanges,
+	)
+
+	http.Redirect(w, r, "/?success=Notification+settings+saved", http.StatusSeeOther)
 }

@@ -231,6 +231,7 @@
 
     {{/* ── Dashboard Section ── */}}
     {{if eq .Section "dashboard"}}
+      {{template "notifications-card" .}}
       {{template "dashboard-section" .}}
 
     {{/* ── New Hook Section ── */}}
@@ -374,6 +375,27 @@
     </div>
 
     <div class="form-group">
+      <label>Notifications</label>
+      <div style="display:flex;gap:16px;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text);cursor:pointer;">
+          <input type="checkbox" name="notify_on_success" value="true"
+                 {{if and .Hook .Hook.Notify.OnSuccess}}checked{{end}}>
+          On Success
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text);cursor:pointer;">
+          <input type="checkbox" name="notify_on_failure" value="true"
+                 {{if and .Hook .Hook.Notify.OnFailure}}checked{{end}}>
+          On Failure
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text);cursor:pointer;">
+          <input type="checkbox" name="notify_on_no_changes" value="true"
+                 {{if and .Hook .Hook.Notify.OnNoChanges}}checked{{end}}>
+          On No Changes
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
       <label for="content_type" data-i18n="label_content_type">Content-Type</label>
       <select id="content_type" name="content_type">
         <option value="json" {{if and .Hook (eq .Hook.ContentType "json")}}selected{{end}} data-i18n="ct_json">JSON</option>
@@ -467,5 +489,48 @@
       <button type="submit" class="btn btn-danger btn-sm" data-i18n="btn_delete">🗑 Excluir</button>
     </form>
   </div>
+</div>
+{{end}}
+
+{{/* ──────────────────── Notifications Card ──────────────────── */}}
+{{define "notifications-card"}}
+<div class="card">
+  <h2>🔔 Notifications</h2>
+  <form method="POST" action="/settings/notifications">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="apprise_url">Apprise URL</label>
+        <input type="text" id="apprise_url" name="apprise_url"
+               placeholder="http://apprise:8000"
+               value="{{.AppriseURL}}">
+        <p class="hint">URL do container Apprise. Ex: http://apprise:8000</p>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="tag_success">Tag — Success</label>
+        <input type="text" id="tag_success" name="tag_success"
+               placeholder="deploy-success"
+               value="{{.TagSuccess}}">
+      </div>
+      <div class="form-group">
+        <label for="tag_failure">Tag — Failure</label>
+        <input type="text" id="tag_failure" name="tag_failure"
+               placeholder="deploy-failure"
+               value="{{.TagFailure}}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="tag_no_changes">Tag — No Changes</label>
+        <input type="text" id="tag_no_changes" name="tag_no_changes"
+               placeholder="deploy-no-changes (opcional)"
+               value="{{.TagNoChanges}}">
+        <p class="hint">Deixe vazio para não notificar quando não houver mudanças.</p>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Notification Settings</button>
+  </form>
 </div>
 {{end}}
