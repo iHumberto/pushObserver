@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HumbertoF28/push-observer/internal/config"
-	"github.com/HumbertoF28/push-observer/internal/deploy"
+	"github.com/iHumberto/pushObserver/internal/config"
+	"github.com/iHumberto/pushObserver/internal/deploy"
 )
 
 const maskedSecret = "***"

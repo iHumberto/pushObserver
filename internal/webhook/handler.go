@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/HumbertoF28/push-observer/internal/config"
-	"github.com/HumbertoF28/push-observer/internal/deploy"
+	"github.com/iHumberto/pushObserver/internal/config"
+	"github.com/iHumberto/pushObserver/internal/deploy"
 )
 
 // Handler serves POST /hook/{id} with HMAC validation and deploy triggering.

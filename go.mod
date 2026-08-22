@@ -1,4 +1,4 @@
-module github.com/HumbertoF28/push-observer
+module github.com/iHumberto/pushObserver
 
 go 1.24
 

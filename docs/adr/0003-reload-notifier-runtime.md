@@ -1,4 +1,4 @@
-# ReloadNotifier — Recarregar Notifier em Runtime sem Reiniciar
+# ADR-0003: ReloadNotifier — Recarregar Notifier em Runtime sem Reiniciar
 
 **Contexto:** Após o usuário alterar configurações de notificação (Apprise URL, tags) via WebUI, o notifier Apprise em memória precisa refletir os novos valores. A alternativa óbvia seria reiniciar o processo — o que interromperia o servidor HTTP e qualquer deploy em andamento.
 

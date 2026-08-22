@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HumbertoF28/push-observer/internal/deploy"
+	"github.com/iHumberto/pushObserver/internal/deploy"
 )
 
 // ─────────────────────────────── Types ──────────────────────────────────

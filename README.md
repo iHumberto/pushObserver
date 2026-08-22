@@ -445,7 +445,7 @@ container.
 
 - Verify the volume: `- /var/run/docker.sock:/var/run/docker.sock`
 - The official image includes `docker-cli` and `docker-compose` — make sure you
-  are using `ghcr.io/humberto/push-observer:latest`, not building locally
+  are using `ghcr.io/iHumberto/push-observer:latest`, not building locally
 
 ### Deploy is slow or times out
 

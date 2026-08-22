@@ -40,7 +40,7 @@ archives:
 
 dockers:
   - image_templates:
-      - "ghcr.io/humberto/push-observer:{{ .Version }}-amd64"
+      - "ghcr.io/iHumberto/push-observer:{{ .Version }}-amd64"
     use: buildx
     dockerfile: Dockerfile
     build_flag_templates:
@@ -50,7 +50,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
   - image_templates:
-      - "ghcr.io/humberto/push-observer:{{ .Version }}-arm64"
+      - "ghcr.io/iHumberto/push-observer:{{ .Version }}-arm64"
     use: buildx
     dockerfile: Dockerfile
     build_flag_templates:
@@ -61,14 +61,14 @@ dockers:
       - "--label=org.opencontainers.image.created={{ .Date }}"
 
 docker_manifests:
-  - name_template: "ghcr.io/humberto/push-observer:{{ .Version }}"
+  - name_template: "ghcr.io/iHumberto/push-observer:{{ .Version }}"
     image_templates:
-      - "ghcr.io/humberto/push-observer:{{ .Version }}-amd64"
-      - "ghcr.io/humberto/push-observer:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/humberto/push-observer:latest"
+      - "ghcr.io/iHumberto/push-observer:{{ .Version }}-amd64"
+      - "ghcr.io/iHumberto/push-observer:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/iHumberto/push-observer:latest"
     image_templates:
-      - "ghcr.io/humberto/push-observer:{{ .Version }}-amd64"
-      - "ghcr.io/humberto/push-observer:{{ .Version }}-arm64"
+      - "ghcr.io/iHumberto/push-observer:{{ .Version }}-amd64"
+      - "ghcr.io/iHumberto/push-observer:{{ .Version }}-arm64"
 
 checksum:
   name_template: "checksums.txt"

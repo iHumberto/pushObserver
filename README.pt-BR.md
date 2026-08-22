@@ -453,7 +453,7 @@ container.
 
 - Verifique o volume: `- /var/run/docker.sock:/var/run/docker.sock`
 - A imagem oficial inclui `docker-cli` e `docker-compose` — certifique-se de que
-  você está usando `ghcr.io/humberto/push-observer:latest`, não compilando localmente
+  você está usando `ghcr.io/iHumberto/push-observer:latest`, não compilando localmente
 
 ### O deploy está lento ou atinge timeout
 
@@ -479,6 +479,46 @@ server:
 - Verifique se o container Apprise está rodando: `docker compose ps apprise`
 - Verifique se o `apprise_url` na sua configuração aponta para o container correto
 - Verifique os logs do pushObserver para erros de notificação: `docker compose logs push-observer | grep notify`
+
+### "Permission denied" ao criar config no .config
+
+O pushObserver cria seu arquivo de configuração em `/home/webhook/.config/` na
+primeira execução. Se este diretório for de propriedade de `root` em vez do
+usuário `webhook`, o container falhará com um erro de "Permission denied" na
+inicialização.
+
+**O que causa isso:**
+
+- Um bind mount onde o diretório do host foi criado pelo daemon do Docker
+  (que roda como root), sobrescrevendo a propriedade correta definida durante o build.
+- Uma imagem Docker desatualizada, construída antes do fix de permissão
+  (commit `5a654fb`).
+
+**Como corrigir:**
+
+Opção 1 — reconstruir a imagem sem cache (mais comum):
+
+```bash
+docker build --no-cache -t pushobserver:dev .
+```
+
+Depois reinicie o container:
+
+```bash
+docker compose up -d
+```
+
+Opção 2 — se você usa um bind mount para o diretório de configuração, corrija a
+propriedade no **host** (não dentro do container):
+
+```bash
+# Substitua /path/to/your/config pelo caminho real
+sudo chown -R 1000:1000 /path/to/your/config
+```
+
+> **Por que UID 1000?** O usuário `webhook` dentro do container tem UID 1000.
+> Definir o diretório do host com o mesmo UID garante que o container consiga
+> escrever nele.
 
 ## Requisitos
 

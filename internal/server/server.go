@@ -20,12 +20,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/HumbertoF28/push-observer/internal/api"
-	"github.com/HumbertoF28/push-observer/internal/config"
-	"github.com/HumbertoF28/push-observer/internal/deploy"
-	"github.com/HumbertoF28/push-observer/internal/notify"
-	"github.com/HumbertoF28/push-observer/internal/ratelimit"
-	"github.com/HumbertoF28/push-observer/internal/webhook"
+	"github.com/iHumberto/pushObserver/internal/api"
+	"github.com/iHumberto/pushObserver/internal/config"
+	"github.com/iHumberto/pushObserver/internal/deploy"
+	"github.com/iHumberto/pushObserver/internal/notify"
+	"github.com/iHumberto/pushObserver/internal/ratelimit"
+	"github.com/iHumberto/pushObserver/internal/webhook"
 )
 
 // ─────────────────────────────── Types ──────────────────────────────────

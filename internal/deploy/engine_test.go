@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HumbertoF28/push-observer/internal/config"
+	"github.com/iHumberto/pushObserver/internal/config"
 )
 
 // ───────────────────── ShouldRestart tests ───────────────────────────────

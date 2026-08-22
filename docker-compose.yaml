@@ -19,7 +19,7 @@
 
 services:
   push-observer:
-    image: ghcr.io/humberto/push-observer:latest
+    image: ghcr.io/iHumberto/push-observer:latest
     container_name: push-observer
     restart: unless-stopped
     ports:
