@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="16" height="16" role="img" aria-label="pushObserver">
+  <title>pushObserver</title>
+  <!-- favicon 16 px: tile + versão mínima a 84% -->
+  <rect width="120" height="120" rx="13" fill="#1A1A2E"/>
+  <g transform="translate(9.6,9.6) scale(0.84)">
+    <g transform="translate(-31.755,-8.655) scale(1.5)">
+      <path d="M 41 34 A 10 10 0 0 1 53 19 A 13 13 0 0 1 72 17 A 10 10 0 0 1 80 34 Z" fill="#FFFFFF"/>
+    </g>
+    <g transform="translate(-54,-34.27) scale(1.9)">
+      <path d="M 69.3 48.5 A 16 16 0 1 1 50.7 48.5" fill="none" stroke="#E94560" stroke-width="7" stroke-linecap="butt"/>
+      <polygon points="58.1 43.3 52.5 54.5 45.7 44.7" fill="#E94560"/>
+    </g>
+  </g>
+</svg>

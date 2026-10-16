@@ -1,16 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="pushObserver">
   <title>pushObserver</title>
-  <!-- nuvem (origem: o push), desktop (quem desenvolve), rack (quem roda) -->
+  <!-- monocromática: os LEDs do rack viram furos, para funcionar sobre qualquer fundo -->
+  <mask id="po-leds">
+    <rect width="120" height="120" fill="#FFFFFF"/>
+    <circle cx="104.5" cy="76.5" r="2.5" fill="#000000"/>
+    <circle cx="104.5" cy="90.5" r="2.5" fill="#000000"/>
+    <circle cx="104.5" cy="103.5" r="2.5" fill="#000000"/>
+  </mask>
+  <path d="M 41 34 A 10 10 0 0 1 53 19 A 13 13 0 0 1 72 17 A 10 10 0 0 1 80 34 Z" fill="#FFFFFF"/>
   <g fill="#FFFFFF">
-    <path d="M 41 34 A 10 10 0 0 1 53 19 A 13 13 0 0 1 72 17 A 10 10 0 0 1 80 34 Z"/>
     <rect x="4" y="74" width="34" height="25" rx="3"/>
     <rect x="18" y="99" width="6" height="7"/>
     <rect x="10" y="105" width="22" height="5" rx="2.5"/>
+  </g>
+  <g fill="#FFFFFF" mask="url(#po-leds)">
     <rect x="83" y="72" width="29" height="10" rx="2.5"/>
     <rect x="83" y="85" width="29" height="10" rx="2.5"/>
     <rect x="83" y="98" width="29" height="10" rx="2.5"/>
   </g>
-  <!-- a sincronia entre os três -->
   <path d="M 69.3 48.5 A 16 16 0 1 1 50.7 48.5" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="butt"/>
   <polygon points="58.1 43.3 52.5 54.5 45.7 44.7" fill="#FFFFFF"/>
 </svg>

@@ -1,12 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="pushObserver">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="32" height="32" role="img" aria-label="pushObserver">
   <title>pushObserver</title>
-  <rect width="32" height="32" rx="7" fill="#1A1A2E"/>
-  <g fill="#FFFFFF">
-    <path d="M 8 11.2 A 4 4 0 0 1 13 5.2 A 5.2 5.2 0 0 1 20.6 4.5 A 4 4 0 0 1 24 11.2 Z"/>
-    <rect x="1.8" y="20.6" width="11" height="7.4" rx="1.8"/>
-    <rect x="21" y="17.6" width="9.2" height="4.8" rx="1.6"/>
-    <rect x="21" y="23.4" width="9.2" height="4.8" rx="1.6"/>
+  <!-- favicon 32 px e acima: tile + ícone completo a 80% (mesmo grid 120 de logo.svg) -->
+  <rect width="120" height="120" rx="13" fill="#1A1A2E"/>
+  <g transform="translate(12,14) scale(0.8)">
+    <path d="M 41 34 A 10 10 0 0 1 53 19 A 13 13 0 0 1 72 17 A 10 10 0 0 1 80 34 Z" fill="#FFFFFF"/>
+    <g fill="#FFFFFF">
+      <rect x="4" y="74" width="34" height="25" rx="3"/>
+      <rect x="18" y="99" width="6" height="7"/>
+      <rect x="10" y="105" width="22" height="5" rx="2.5"/>
+    </g>
+    <g>
+      <rect x="83" y="72" width="29" height="10" rx="2.5" fill="#FFFFFF"/>
+      <circle cx="104.5" cy="76.5" r="2.5" fill="#00F707"/>
+      <rect x="83" y="85" width="29" height="10" rx="2.5" fill="#FFFFFF"/>
+      <circle cx="104.5" cy="90.5" r="2.5" fill="#F73A00"/>
+      <rect x="83" y="98" width="29" height="10" rx="2.5" fill="#FFFFFF"/>
+      <circle cx="104.5" cy="103.5" r="2.5" fill="#EFF700"/>
+    </g>
+    <path d="M 69.3 48.5 A 16 16 0 1 1 50.7 48.5" fill="none" stroke="#E94560" stroke-width="7" stroke-linecap="butt"/>
+    <polygon points="58.1 43.3 52.5 54.5 45.7 44.7" fill="#E94560"/>
   </g>
-  <path d="M 19.9 14.6 A 4.4 4.4 0 1 1 14.5 14.4" fill="none" stroke="#E94560" stroke-width="2.8" stroke-linecap="butt"/>
-  <polygon points="16.9 13 15.1 16.9 12.6 13.3" fill="#E94560"/>
 </svg>
