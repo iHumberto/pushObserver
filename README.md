@@ -529,6 +529,28 @@ own:
 
 Works on any Linux host — tested on Raspberry Pi 4B (arm64) and x86_64.
 
+## Brand
+
+Logo and favicon live in [`assets/brand/`](assets/brand/), all drawn on a single
+120×120 grid — between files only `width`/`height` change.
+
+![pushObserver brand contact sheet](assets/brand/contact-sheet.png)
+
+| File | What it is | Use at |
+|---|---|---|
+| `logo.svg` | full icon — cloud, desktop, rack and the sync arrow | 32 px and up |
+| `logo-compact.svg` | minimal version: cloud + arrow only | 24 px and down |
+| `logo-mono.svg` | single colour, inherits `currentColor`; rack LEDs are cut-outs | any background |
+| `favicon.svg` · `favicon-min.svg` | icon on a dark tile | 32 px · 16 px |
+| `favicon.ico` | what the dashboard serves — 16 to 256 | — |
+
+Below 32 px the three rack bars sit less than 1 px apart and merge into a blur:
+that is why the minimal version exists, and why the `.ico` switches to it at 16
+and 24 px.
+
+After changing any SVG, run `assets/brand/contact-sheet.sh` to regenerate the
+contact sheet above — the zoomed row is what catches an LED that went missing.
+
 ## License
 
 GNU General Public License v3.0. See [LICENSE](LICENSE).

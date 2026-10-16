@@ -530,6 +530,29 @@ sudo chown -R 1000:1000 /path/to/your/config
 
 Funciona em qualquer host Linux — testado no Raspberry Pi 4B (arm64) e x86_64.
 
+## Marca
+
+O logo e o favicon ficam em [`assets/brand/`](assets/brand/), todos desenhados
+num mesmo grid de 120×120 — de um arquivo para outro muda só `width`/`height`.
+
+![folha de contato da marca do pushObserver](assets/brand/contact-sheet.png)
+
+| Arquivo | O que é | Usar a partir de |
+|---|---|---|
+| `logo.svg` | ícone completo — nuvem, desktop, rack e a seta da sincronia | 32 px para cima |
+| `logo-compact.svg` | versão mínima: só nuvem + seta | 24 px para baixo |
+| `logo-mono.svg` | uma cor só, herda `currentColor`; os LEDs do rack são furos | qualquer fundo |
+| `favicon.svg` · `favicon-min.svg` | ícone sobre o tile escuro | 32 px · 16 px |
+| `favicon.ico` | o que o dashboard serve — de 16 a 256 | — |
+
+Abaixo de 32 px as três barras do rack ficam com menos de 1 px de vão e se
+fundem num borrão: é por isso que a versão mínima existe, e por que o `.ico`
+troca para ela em 16 e 24 px.
+
+Depois de mexer em qualquer SVG, rode `assets/brand/contact-sheet.sh` para
+regerar a folha de contato acima — a fileira ampliada é o que denuncia um LED
+que sumiu.
+
 ## Licença
 
 GNU General Public License v3.0. Veja [LICENSE](LICENSE).
